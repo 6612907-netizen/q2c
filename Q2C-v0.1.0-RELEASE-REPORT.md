@@ -303,9 +303,12 @@ STAGING 那次红的账（主理人转来的通知，读的是真日志）：`ev
 不是"发布物被改动"。要验发布物本身，请用这条不随时间变的命令：
 
 ```
-git fetch --tags && git archive --format=tar.gz --prefix=q2c/ v0.1.0 \
+# 在**公开仓**里跑（tag 只存在于公开仓；私有构建根刻意没推 tag，也不推完整历史）
+git clone https://github.com/6612907-netizen/q2c q2c-verify && cd q2c-verify
+git archive --format=tar.gz --prefix=q2c/ v0.1.0 \
   -- . ':(exclude)evidence' ':(exclude)Q2C-v0.1.0-RELEASE-REPORT.md' | shasum -a 256
 # 期望 c37374b5868db984604391f4a165edf852cae93ea7fec81f2440b1f5b63afd4c
+# 已现算三次同一枚：tag 归档＝release 附件 API digest＝CI 归档验过的字节
 ```
 
 发布后剩余动作：无（本任务书要求的关口已全部闭合）。后续路线（V1.1：事件与唤醒分离、
