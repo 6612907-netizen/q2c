@@ -311,6 +311,11 @@ dynamic = ["version"]''',
      """:(exclude)Q2C-v0.1.0-RELEASE-REPORT.md'""",
      "tests.test_release_manifest.TestManifestScopeRules.test_packaging_exclusions_are_not_pinned_to_one_report_name",
      "归档命令里把报告排除写死成一枚文件名⇒包比清单多一件（0.1.1 这次就是这么红的）"),
+    ("vendor-block-missing-from-release-report", "Q2C-v0.1.1-RELEASE-REPORT.md",
+     '''QODER_CN_VERIFIED=YES                     # 真跑过：与 Codex 双向各一次，两腿都 ACKED''',
+     '''厂商边界见 README（这里不写）              # 故意不留那一档''',
+     "tests.test_vendor_claims.Test04_发布记录里那一档也在.test_release_report_has_the_vendor_verdict_block",
+     "发布记录里没写验到哪一枚 CLI⇒读发布记录的人以为整条产品线都验过了"),
 ]
 
 

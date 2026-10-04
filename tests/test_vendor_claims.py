@@ -128,17 +128,45 @@ class Test03_中性那句不许说过头(unittest.TestCase):
 
 
 class Test04_发布记录里那一档也在(unittest.TestCase):
+    def _reports(self):
+        return sorted(f for f in os.listdir(ROOT)
+                      if re.match(r"^Q2C-v\d+\.\d+\.\d+-RELEASE-REPORT\.md$", f))
+
     def test_release_report_has_the_vendor_verdict_block(self):
-        """v0.1.1 那份发布记录里必须有一节写厂商边界（报告不进包，但它是对外口径的原件）。"""
-        reports = sorted(f for f in os.listdir(ROOT)
-                         if re.match(r"^Q2C-v\d+\.\d+\.\d+-RELEASE-REPORT\.md$", f))
-        self.assertTrue(reports, "仓根一份发布报告都没有")
+        """有发布报告的那棵树里，报告必须写厂商边界（报告**故意不进包**，见下面那格的 skip 理由）。"""
+        reports = self._reports()
+        if not reports:
+            # 这不是"没测到就算过"的口子：这一格测的对象是"发布报告"这件文件，
+            # 而包里按定义不含发布报告（tests/test_release_manifest.py 的 test_08 钉着那条分工）。
+            # 同一屏内容在**包内**的载体是 README，那一档由 Test02 无条件下核。
+            self.skipTest("这棵树里没有发布报告（发布报告故意不随包走）⇒ 本格无对象可核；"
+                          "包内的边界由 Test02 对 README 现证")
         latest = reports[-1]
         text = read(latest)
         for key in ("QODER_CN_VERIFIED", "QODER_INTERNATIONAL_VERIFIED"):
             self.assertIn(key, text,
                           "%s 里没有 %s 这一档⇒读发布记录的人不知道该腿验到哪一层"
                           % (latest, key))
+
+    def test_report_exclusion_rule_covers_the_latest_report(self):
+        """这一格把上一条的 skip 理由**自己钉住**：新报告确实落在"不随包走"的那条规则里。
+
+        如果哪天排除规则漂了（新版本的报告名不被认出），上一格就不会再"合理跳过"，
+        而是包里有报告、这一格直接红——沉默的口子从这里堵掉。
+        """
+        import importlib.util
+        spec_path = os.path.join(ROOT, "tools", "make-manifest.py")
+        if not self._reports() and not os.path.isfile(spec_path):
+            self.skipTest("既没有发布报告也没有清单工具（不是发布物树）⇒ 无对象可核")
+        if not os.path.isfile(spec_path):
+            self.skipTest("这棵树里没有 tools/make-manifest.py")
+        spec = importlib.util.spec_from_file_location("q2c_make_manifest_for_vendor", spec_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for name in self._reports():
+            self.assertTrue(mod.is_release_report(name),
+                            "%s 不被发布报告的排除规则认出⇒它会进包，"
+                            "而 Test04 第一条在这里会永远合理跳过＝沉默的口子" % name)
 
 
 if __name__ == "__main__":
