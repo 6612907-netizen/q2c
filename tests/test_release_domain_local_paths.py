@@ -87,19 +87,27 @@ class TestReleaseDomainHasNoLocalPaths(unittest.TestCase):
         self.assertTrue(hits, "扫描器抓不到自家绝对路径＝它是死的")
         self.assertEqual(hits[0][1], "home-dir")
 
-    def test_03_evidence_domain_is_deliberately_out_of_scope(self):
-        """证据域**故意**不在范围内：那里本机路径是事实的一部分，不许改写。
+    def test_03_evidence_domain_is_out_of_scope_and_its_absence_is_documented(self):
+        """两件事分开钉：①扫描范围必须**排除** `evidence/`；②如果这个仓里根本没有证据件
+        （公开仓就是这种），那"为什么没有"必须在 README 里写明，不许让人以为是丢了。
 
-        这一格钉的是"范围收窄"这件事本身：`evidence/` 不进发布包也不进公开仓，
-        所以它可以留坐标；哪天有人把 evidence 也打进包里，这条边界就必须在打包那侧拦，
-        而不是跑到这里来给证据加脱敏（那等于改史）。
+        这一格今天自己撞了一次：我原来写的是"仓里要有证据件，否则这条边界说明就该重写"，
+        于是它在**公开仓**上判红——而公开仓没有证据件正是这条规则的目的本身。
+        规则没错，断言钉错了对象。
         """
-        p = subprocess.run(["git", "-C", ROOT, "ls-files", "evidence/"],
-                           stdout=subprocess.PIPE, text=True)
-        tracked_evidence = [l for l in p.stdout.splitlines() if l.strip()]
-        self.assertTrue(tracked_evidence, "仓里没有证据件？那这条边界说明就该整段重写")
         self.assertTrue(all(not f.startswith("evidence/") for f in _release_files()),
                         "evidence/ 混进发布域扫描范围了（要么改代码要么改这一格，别两边都改）")
+        tracked_evidence = subprocess.run(
+            ["git", "-C", ROOT, "ls-files", "evidence/"],
+            stdout=subprocess.PIPE, text=True).stdout.split()
+        if tracked_evidence:
+            return                        # 构建侧的仓：范围排除已核，边界说明见发布报告
+        readme = os.path.join(ROOT, "README.md")
+        self.assertTrue(os.path.isfile(readme), "没有证据件、也没有 README，无从判断是不是刻意")
+        with open(readme, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn("验证证据在哪", text,
+                      "这个仓里没有证据件，却没在 README 写明为什么没有——读者只能猜是丢了")
 
 
 if __name__ == "__main__":
