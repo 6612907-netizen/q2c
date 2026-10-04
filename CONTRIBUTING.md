@@ -38,6 +38,17 @@ python3 tools/report-readings.py --json                                 # 发布
 照 `ADAPTERS.md` §5。要点：`capabilities()` 必须如实报限制；解析放适配器、判定放核心；
 能力位 honesty 与契约完整性两格判据要跟着加。
 
+## 提交前的门（退出码说话，不靠人盯输出）
+
+```
+sh tools/gate-commit.sh        # 全量判据 ＋ smoke；任何一步非零或没打出 OK／ACKED ⇒ 退 1
+```
+
+为什么单独有这条（2026-10-04 的自伤）：我把一串动作写成
+`unittest discover … | grep -E "^Ran |^OK|^FAILED" && git commit …`——`grep` 匹配到 `FAILED`
+仍退 0，于是判据红着也照样提了，那一笔把 CI 全矩阵判红。
+**"我看见红了"不等于"门拦住了"**：门必须是退出码。所以提交前跑这一条，别拿 grep 的返回值当门。
+
 ## 提交与 CHANGELOG
 
 - 每个 PR 更新 `CHANGELOG.md`（`Unreleased` 段），写清**行为**变化而不是文件清单；

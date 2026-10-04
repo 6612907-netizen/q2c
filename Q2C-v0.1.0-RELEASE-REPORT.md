@@ -285,6 +285,29 @@ PUBLISHED=v0.1.0（本节所有数取自 `evidence/publish-v0.1.0.txt`，那一�
   作废的本地冻结（未推送，仅本地留档）  da699a3／27c8e7f／56f09f4／818106b／ee95466，
             原因逐笔写在提交正文；最后一次 464e518 是被发布的那枚内容身份。
 
+STAGING 那次红的账（主理人转来的通知，读的是真日志）：`evidence/ci-staging-a14fd5c-note.md`。
+一句话：提交 `a14fd5c` 把"扫描规则要抓的那个字面量"原样写进了本报告"发布前脱敏"那两行，
+于是 `tests/test_release_domain_local_paths.py::test_01` 在 staging 全矩阵判红；
+`clean-machine` 同一笔是绿的。修在 `7efa3e7`（改成用话描述），两作业回到 success。
+**它不推翻发布结论**，三条现读为证：① 被发布的是 tag `v0.1.0` → `2213ba6…`，那一枚上公开仓
+`clean-machine` run 37202188662 与 `ci` run 37202515727 都绿；② 红的那笔只动报告与 `evidence/`，
+两者都不在包里（`test_06`／`test_08` 钉着）；③ 包字节复算仍是 `c37374b5868db984…b63afd4c`，
+与 release 附件的 API digest 逐字相同。
+我自己那笔错在"看见了红却还是提交了"——那条命令里 `grep` 匹配到 `FAILED` 仍退 0，
+`&&` 就往下走。所以补了一枚说退出码的门 `tools/gate-commit.sh`（反照已做：塞一格红 ⇒ rc=1），
+并写进 CONTRIBUTING。另：staging 的 Actions 已关（它的用途已完成，公开仓才是权威 CI；
+这是仓库设置，不改任何文件、不动 tag／release，可逆）。
+
+发布之后 main 上还会继续有提交（本次就有两笔：门件与 CONTRIBUTING），
+所以 `python3 tools/make-manifest.py` 从今往后会正常报 `DRIFTED`——那说的是"清单不再描述分支尖"，
+不是"发布物被改动"。要验发布物本身，请用这条不随时间变的命令：
+
+```
+git fetch --tags && git archive --format=tar.gz --prefix=q2c/ v0.1.0 \
+  -- . ':(exclude)evidence' ':(exclude)Q2C-v0.1.0-RELEASE-REPORT.md' | shasum -a 256
+# 期望 c37374b5868db984604391f4a165edf852cae93ea7fec81f2440b1f5b63afd4c
+```
+
 发布后剩余动作：无（本任务书要求的关口已全部闭合）。后续路线（V1.1：事件与唤醒分离、
   Adapter 隔离、compatibility 矩阵、状态源换 SQLite）另按《V1.1-方向》那份文档推进，不在本次发布范围内。
 
