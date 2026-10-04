@@ -1,20 +1,26 @@
 [build-system]
-requires = ["setuptools>=68"]
+# 下限取到 77：`license` 从 77 起接受 SPDX 串（PEP 639）。
+# 2026-10-04 现读到旧写法（`license = {text = "MIT"}`）在构建期打弃用告警，
+# 告警里明写 **2027-02-18 起不再支持** ——那之后 `pip install q2c` 会从告警变成失败。
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "q2c"
-version = "0.1.0"
+# 版本号**不在这里写**：由 [tool.setuptools.dynamic] 从 q2c/_version.py 那一行取。
+# 原先这里与 q2c/__init__.py 各有一份 0.1.0，那是双真源（判据：tests/test_packaging.py）。
 description = "Reliable handoff infrastructure for AI coding agents — q2c guarantees the handoff, not the outcome."
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+# 2027-02-18 起 setuptools 不再接受 `license = {text = "…"}` 这种表写法（构建期告警里明写的日子）。
+# 换成 SPDX 串：这一串就是包页面上"License"那一栏的来源，LICENSE 文件随包发（见 MANIFEST.in）。
+license = "MIT"
+dynamic = ["version"]
 keywords = ["agent", "handoff", "bridge", "codex", "qoder", "transport"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
@@ -28,5 +34,15 @@ q2c = "q2c.cli:main"
 [tool.setuptools]
 packages = ["q2c", "q2c.adapters"]
 
+[tool.setuptools.dynamic]
+version = {attr = "q2c._version.__version__"}
+
+# 全部得是能点开的 URL：这一节直接变成包页面上的链接，
+# 写仓库内相对路径（以前那行 Protocol = "PROTOCOL.md"）等于给用户一条坏链。
 [project.urls]
-Protocol = "PROTOCOL.md"
+Homepage = "https://github.com/6612907-netizen/q2c"
+Repository = "https://github.com/6612907-netizen/q2c"
+Issues = "https://github.com/6612907-netizen/q2c/issues"
+Changelog = "https://github.com/6612907-netizen/q2c/blob/main/CHANGELOG.md"
+Protocol = "https://github.com/6612907-netizen/q2c/blob/main/PROTOCOL.md"
+Security = "https://github.com/6612907-netizen/q2c/blob/main/SECURITY.md"

@@ -1,4 +1,4 @@
-"""q2c — 可靠的 AI 编码 Agent 交接桥（v0.1.0 产品路径）。
+"""q2c — 可靠的 AI 编码 Agent 交接桥（协议 q2c/1；版本号只在 q2c/_version.py 一处）。
 
 产品边界（PROTOCOL.md §0）：q2c 保证**交接**，不保证**结果**。
 本包只含传输事实：投递／关联／幂等／送达确认／重投／会话映射／适配器／产物引用／
@@ -22,6 +22,6 @@ from .protocol import (  # noqa: F401
     next_state,
 )
 
-__version__ = "0.1.0"
+from ._version import __version__  # 唯一真源在 q2c/_version.py（打包从这里取，别再写一遍）
 
 __all__ = ["__version__", "PROTOCOL_VERSION"]

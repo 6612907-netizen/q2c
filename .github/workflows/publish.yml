@@ -1,0 +1,130 @@
+name: publish（PyPI 正式发布·手动触发）
+# 这道作业只做一件事：把**已冻结并已验过的那一枚 tag** 的构建物经 OIDC 交给 PyPI。
+#
+# 三条设计决定（都是口径，不是偏好）：
+#   1. 不引用任何 secret。发布通道用 GitHub Trusted Publisher（OIDC 短期令牌），
+#      所以这台机器与这个仓里**不存在**长期 PyPI token，也不需要主理人的明文凭证。
+#   2. 手动触发（workflow_dispatch）。自动发布＝把"要不要发"这个产品决定交给了 CI，
+#      而那个决定权在主理人。
+#   3. 发布前先验前置条件（fail-closed）：该 ref 上的 CI／clean-machine／package 三道作业
+#      必须全部 success，取不到结论就拒发、零副作用。宁可拒发，不发"没验过的那一枚"。
+#
+# 前置动作（**只能由主理人本人在 PyPI 上做**，本作业不代做，也不要凭证）：
+#   A. 若项目尚未存在：在 PyPI 上"Publishing → Add a new publisher → GitHub Actions"
+#      填 owner=6612907-netizen、project name=q2c、repository name=q2c、
+#      workflow name=publish.yml、environment=<与下面 environment: 一致>；
+#      PyPI 允许为**尚不存在的项目**登记这个"pending publisher"，首次上传会当场创建项目。
+#      （注意：pending publisher 不预留名字，名字被别人抢在前就登记不上——那时停下裁决，不改包名。）
+#   B. （建议）在 GitHub 上给该 environment 设 reviewer，让"点发布"这一步留痕可追。
+#
+# 复跑与取证：本作业的 run 链接、构建物 SHA256、发布后的版本回读，都要抄进
+# `Q2C-v0.1.1-RELEASE-REPORT.md` 的 §PYPI_PUBLISH，不靠截图。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要发布的 tag 或提交（默认 v0.1.1）
+        required: false
+        default: "v0.1.1"
+
+permissions:
+  contents: read
+  id-token: write        # OIDC：PyPI 靠这一枚换短期上传凭证，仓内不存长期 token
+
+jobs:
+  publish:
+    environment: pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+
+      - name: 前置闸·该 ref 上的三道 CI 必须全绿（取不到结论就拒发）
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.event.inputs.ref }}
+        run: |
+          set -eu
+          SHA=$(git rev-parse "${REF}^{commit}")
+          echo "target_sha=${SHA}"
+          echo "version=$(git show "${SHA}:q2c/_version.py" | sed -n 's/^__version__ = "\([^"]*\)"$/\1/p')"
+          # 需要的三道：ci / clean-machine / package（名字与各自 workflow 的 name 一致）
+          MISSING=""
+          for W in "ci" "clean-machine（独立托管环境复验冻结发布物）" "package（发布物装不装得上、CLI 入口坏没坏）"; do
+            ST=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-suites" \
+                  --jq ".check_suites[] | select(.workflow_name == \"${W}\") | .conclusion" 2>/dev/null | head -1 || true)
+            if [ -z "$ST" ]; then
+              MISSING="${MISSING} ${W}"
+            elif [ "$ST" != "success" ]; then
+              echo "PRECHECK=REFUSED（${W} 的结论是 ${ST}，不是 success）"
+              exit 1
+            else
+              echo "precheck.${W}=success"
+            fi
+          done
+          if [ -n "${MISSING}" ]; then
+            echo "PRECHECK=UNKNOWN（这些作业在该提交上没有可判结论：${MISSING}）⇒ 不发布"
+            echo "这不是失败，是**没证据**：先让那几道作业在该 ref 上真跑一次，再来触发发布。"
+            exit 2
+          fi
+          echo "PRECHECK=PASS"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 构建（PEP 517，时间戳钉在该提交的时刻）
+        run: |
+          set -eu
+          python -m pip install --quiet --upgrade pip build twine
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          python -m build
+          python -m twine check dist/*
+          sha256sum dist/* | tee dist.sha256
+
+      - name: 发布前自证·全新环境装上它并跑通 CLI 与 Quick Start
+        run: |
+          set -eu
+          python -m venv /tmp/pub-venv
+          /tmp/pub-venv/bin/python -m pip install --quiet --no-deps dist/q2c-*.whl
+          /tmp/pub-venv/bin/q2c --help > /dev/null
+          export Q2C_HOME=$(mktemp -d)
+          export PATH=/tmp/pub-venv/bin:$PATH
+          q2c init > /dev/null
+          S=$(q2c sessions create --role sender --adapter loopback --label pub-s |
+              python3 -c 'import json,sys;print(json.load(sys.stdin)["session_id"])')
+          R=$(q2c sessions create --role receiver --adapter loopback --label pub-r |
+              python3 -c 'import json,sys;print(json.load(sys.stdin)["session_id"])')
+          OUT=$(q2c send --from "$S" --to "$R" --payload "发布前自证：回一句话说明你收到了这一笔")
+          echo "$OUT"
+          echo "$OUT" | grep -q '"state": "ACKED"' || { echo "PREPUBLISH_SMOKE=FAIL（没读到 ACKED）"; exit 1; }
+          echo "PREPUBLISH_SMOKE=ACKED"
+
+      - name: 交给 PyPI（OIDC，不使用任何仓内凭证）
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+
+      - name: 发布后回读（版本号与描述必须与发出去的一致）
+        run: |
+          set -eu
+          sleep 30
+          VER=$(python -c "import re;print(re.search(r'__version__ = .([0-9.]+).', open('q2c/_version.py').read()).group(1))")
+          echo "回读 https://pypi.org/pypi/q2c/${VER}/json"
+          curl -sS -o /tmp/pypi.json -w "http=%{http_code}\n" "https://pypi.org/pypi/q2c/${VER}/json"
+          python - "$VER" <<'PY'
+          import json, sys
+          want = sys.argv[1]
+          d = json.load(open("/tmp/pypi.json"))
+          info = d.get("info", {})
+          print("pypi_version=%s" % d.get("version", ""))
+          print("pypi_name=%s" % info.get("name", ""))
+          print("requires_python=%s" % info.get("requires_python", ""))
+          print("has_summary=%s" % bool(info.get("summary")))
+          urls = info.get("project_urls") or {}
+          print("project_urls=%s" % ",".join(sorted(urls)))
+          assert d.get("version") == want, "PyPI 上回读到的版本与发出去的不一致"
+          print("PYPI_READBACK=OK")
+          PY

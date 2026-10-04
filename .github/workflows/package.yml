@@ -1,0 +1,60 @@
+name: package（发布物装不装得上、CLI 入口坏没坏）
+# 这道门只为一个问题服务：**源码判据全绿 ≠ 别人装得上**。
+# 2026-10-04 那次发布，最先红的三件事全在这条路上（shell 方言、缺构建依赖、按 mtime 挑件），
+# 而当时 `ci` 那道门是绿的——所以这道门必须独立存在，不能并进 ci。
+# 门本体＝`tools/pkg-install-test.sh`（本机同一条命令可跑，两边不存在两套口径）。
+#
+# 退出码读法（别把两档混成"重跑一次看看"）：
+#   1 ＝不合格：包装不上、CLI 入口坏、装上的包跑不过判据——这是产品/打包的缺陷，当红修。
+#   2 ＝测不了：这台机器连构建工装或 pipx 都取不到——也是红，但它红的是"这一格没有证据"，
+#       不许写成通过；补上工装重跑，或明写该环境不要求这一档。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  packaging:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.13"]
+        include:
+          # 最低支持档单独占一格：SPDX 写法与动态版本号在老 setuptools／老 pip 上最容易翻车。
+          - os: ubuntu-latest
+            python: "3.9"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: 备好 pipx（这一档不许因为"机器上没有"就自动折成通过）
+        run: |
+          if command -v pipx >/dev/null 2>&1; then
+            echo "pipx=$(/usr/bin/env pipx --version)"
+            exit 0
+          fi
+          if command -v brew >/dev/null 2>&1; then
+            brew install pipx
+          else
+            python3 -m pip install --user pipx
+            python3 -m pipx ensurepath || true
+          fi
+          export PATH="$HOME/.local/bin:$PATH"
+          command -v pipx && exit 0
+          echo "PIPX_UNAVAILABLE（脚本会写 PIPX=UNVERIFIED 并以退 2 结束，不会假绿）"
+      - name: 造件→装件→跑 CLI→用装上的包跑判据
+        env:
+          OUT_DIR: ${{ github.workspace }}/pkg-out
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          sh tools/pkg-install-test.sh
+      - name: 把本轮造的件与全部日志回传（发布候选身份要能对号）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.os }}-py${{ matrix.python }}
+          path: pkg-out/
+          if-no-files-found: error

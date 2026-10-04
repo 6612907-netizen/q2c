@@ -4,11 +4,58 @@
 **注意**：`protocol_version`（现在是 `q2c/1`）与包版本是两个独立编号——
 加状态或改字段语义必须升协议主版本，见 `PROTOCOL.md` §9。
 
-## Unreleased
+## 0.1.1 — 2026-10-04（包分发与厂商边界；协议仍是 `q2c/1`，产品逻辑没动）
 
-（下一个 PR 在这里起一段，写行为变化而不是文件清单。）
+**为什么升 `0.1.1` 而不是把 `0.1.0` 重发一次**（主理人 2026-10-04 裁定选 (a)）：
+tag `v0.1.0` 与它的 GitHub Release 附件**永久冻结**，PyPI 上的 `0.1.0` 不许指向另一套字节。
+这一轮改的是「发得出去、装得上、边界说清」——按 SemVer 走补丁号。
+任何人可自己核的那条：
 
-## 0.1.0 — 2026-10-04（首次准备公开发布，尚未发布）
+```
+git diff --name-only v0.1.0..<v0.1.1 冻结点> -- q2c/    # 只应出现 _version.py 与 __init__.py 那一行 import
+```
+
+### 新增
+
+- 包分发路径打通：`pip`／`pipx` 装得上、`q2c --help` 跑得起来、装完 Quick Start 到 `ACKED`。
+  - 版本唯一真源 `q2c/_version.py`（原先 `pyproject.toml` 与 `q2c/__init__.py` 各写一遍＝双真源）；
+  - `MANIFEST.in`：源码包必须带上判据树要读的那几件。**此前发出去的 sdist 带着判据却没有
+    `tests/__init__.py`**，别人解包后 `unittest discover` 当场 ImportError——
+    等于发了一套「声称可复跑其实跑不了」的判据；
+  - `tools/pkg-install-test.sh`：造件→`twine check`→全新 venv 分别装 wheel 与 sdist→CLI 入口→
+    **逐字执行 README 那一节**→用发出去的那份代码跑整批判据→pipx→校仓里不落构建产物；
+    退出码三档（0 合格／1 不合格／2 测不了）。CI 的 `package` job 只叫这一条命令，
+    本机与 CI 不存在两套口径；
+  - `tools/pypi-name-check.py`：PyPI 名字占用核查（只读、三档、取不到退 2，不折成「可用」）；
+  - `tests/test_packaging.py` 先红后绿；`tools/teeth.py` 同批补变异盯这些新格。
+- 厂商边界写进文档与 PyPI 页面：`README.md` 新增「验到哪一枚 CLI」一屏，四行机器可读口径
+  `QODER_CN_VERIFIED=YES`／`QODER_INTERNATIONAL_VERIFIED=NOT_VERIFIED`／`CODEX_VERIFIED=YES`／
+  `CORE_PROTOCOL_VENDOR_NEUTRAL=YES` ＋ `CN_SPECIFIC_DEPENDENCIES` 逐条表；`ADAPTERS.md` §2 同步；
+  判据 `tests/test_vendor_claims.py` 钉住（含反向钉：谁把 International 写成已验证就红）。
+
+### 变更
+
+- 版本号改动态取值：`[tool.setuptools.dynamic] version = {attr = "q2c._version.__version__"}`。
+- `license` 由表写法换 SPDX 串（构建告警点名 2027-02-18 起旧写法不再支持），构建下限提到 `setuptools>=77`。
+- `[project.urls]` 那行 `Protocol = "PROTOCOL.md"`（坏链）换成真 URL，并补 Homepage／Repository／
+  Issues／Changelog／Security。
+- 造件时间戳钉到提交时刻（`SOURCE_DATE_EPOCH`）⇒ 同一枚提交两次造出的 wheel 逐字节相同；
+  sdist 仍随造件时刻变（tar 顶层目录与 `egg-info/*` 的 mtime＋gzip 头三处），身份按内容对。
+  这条取舍写在判据 docstring 里，不靠默契。
+- 工装里写死的 `v0.1.0` 字面量全部改成跟版本走：清单文件名 `SHA256SUMS-v<版本>.txt`、
+  发布包名 `q2c-v<版本>-source.tar.gz`、发布报告按**形状**排除（`Q2C-v*-RELEASE-REPORT.md` 一律不进包）。
+  判据 `tests/test_release_manifest.py::TestVersionAwareNames` 钉住，另有「根级每枚非报告 md
+  必须被声明收录」的反向钉。
+
+### 未闭合（不粉饰）
+
+- PyPI 上传**没做**：不建账号、不要令牌、不碰公开不可逆动作。所以 `pipx install q2c` 是将来式；
+  今天能照抄的是 `pipx install git+https://github.com/6612907-netizen/q2c.git@<tag>`。
+- 名字 `q2c` 现读「未被占用」（两个公开入口都 404），但**注册会不会被拒没证也证不了**。
+- 真实双向交接那两格仍需 `Q2C_LIVE=1` 显式授权才跑；本轮一枚模型调用都没烧。
+- Qoder International 那一支**没跑过**，因此不写「支持」。
+
+## 0.1.0 — 2026-10-04（已公开发布：tag `v0.1.0`，见 Q2C-v0.1.0-RELEASE-REPORT.md）
 
 ### 新增
 

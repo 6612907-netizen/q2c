@@ -54,14 +54,22 @@ else
      fi
 fi
 
-PKG=q2c-v0.1.0-source.tar.gz
+# 包名里的版本跟着**那一枚提交**走（写死就是升版本时没人想起来改的那一处）。
+# 取的是被归档那枚提交里的 `q2c/_version.py`，不是工作树——工作树可能已经不是发布物了。
+VERSION=$(git show "$REF:q2c/_version.py" 2>/dev/null | sed -n 's/^__version__ = "\([^"]*\)"$/\1/p')
+if [ -z "$VERSION" ]; then
+  echo "VERSION=UNREADABLE（$REF 里取不到 q2c/_version.py 的字面量 ⇒ 包名无名可取，不猜）"
+  exit 1
+fi
+echo "version=${VERSION}"
+PKG=q2c-v${VERSION}-source.tar.gz
 echo "== 1) 从冻结提交构建发布包（git archive，不读工作树）"
 # 打包范围＝**发布域**：`evidence/` 不随源码包走。两条理由：
-#   · 发布物清单（evidence/SHA256SUMS-v0.1.0.txt）的收录规则就是"除 evidence/"，
+#   · 发布物清单（evidence/SHA256SUMS-v<版本>.txt）的收录规则就是"除 evidence/"，
 #     包里却装着它，等于清单描述的东西比包少；
 #   · 那些件是我这台开发机的现场（含 <外部卷>/… 绝对路径、会话号、额度读数），
 #     不是别人装 q2c 需要的东西。判据在没证据件的包照跑，只把证据相关那几格如实 skip。
-git archive --format=tar.gz --prefix=q2c/ -o "$OUT/$PKG" "$REF" -- . ':(exclude)evidence' ':(exclude)Q2C-v0.1.0-RELEASE-REPORT.md'
+git archive --format=tar.gz --prefix=q2c/ -o "$OUT/$PKG" "$REF" -- . ':(exclude)evidence' ':(exclude,glob)Q2C-v*-RELEASE-REPORT.md'
 FILES=$(tar -tzf "$OUT/$PKG" | sed -n '/\/$/!p' | wc -l | tr -d ' ')
 echo "package_files=${FILES}（发布域＝包里的件，应与发布物清单条目数一致）"
 SHA=$(shasum -a 256 "$OUT/$PKG" | awk '{print $1}')

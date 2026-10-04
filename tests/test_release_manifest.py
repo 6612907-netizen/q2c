@@ -68,7 +68,7 @@ class TestManifestScopeRules(unittest.TestCase):
 
     def test_02_evidence_scope_holds_only_non_release_items(self):
         wrong = [p for p in self._paths(self.ev_rows)
-                 if not (p.startswith("evidence/") or p == "Q2C-v0.1.0-RELEASE-REPORT.md")]
+                 if not (p.startswith("evidence/") or self.m.is_release_report(p))]
         self.assertEqual(wrong, [], "证据域清单混进发布物：%s" % (wrong[:5],))
 
     def test_03_two_scopes_partition_the_tree(self):
@@ -123,7 +123,7 @@ class TestManifestScopeRules(unittest.TestCase):
         """
         p = subprocess.run(["git", "-C", ROOT, "archive", "--format=tar", "--prefix=q2c/",
                             "HEAD", "--", ".", ":(exclude)evidence",
-                            ":(exclude)Q2C-v0.1.0-RELEASE-REPORT.md"],
+                            ":(exclude,glob)Q2C-v*-RELEASE-REPORT.md"],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
         self.assertEqual(p.returncode, 0, "git archive 失败：%s" % p.stderr.decode()[:200])
         listing = subprocess.run(["tar", "-t"], input=p.stdout, stdout=subprocess.PIPE, check=True)
@@ -134,6 +134,33 @@ class TestManifestScopeRules(unittest.TestCase):
                          "包与清单不一致：包多=%s 清单多=%s" % (
                              sorted(set(names) - set(listed))[:5],
                              sorted(set(listed) - set(names))[:5]))
+
+    def test_packaging_exclusions_are_not_pinned_to_one_report_name(self):
+        """三处"排除发布报告"的写法都得按形状，不许钉死某一枚文件名。
+
+        2026-10-05 现读抓到的形状：判据 test_06 比对"包件集＝清单条目"时，归档命令里排除的还是
+        上一版那一枚报告的文件名。升到 v0.1.1 后新报告被清单的排除规则认出（所以不在清单里），
+        却没被归档命令排除 ⇒ 包比清单多一件，test_06 当场红。
+        这一格把"排除＝形状"钉成静态判据，免得下一次又在提交之后才发现。
+
+        写法规避一格老坑：**断言不许扫到自己那一行**——要搜的字面量在这里是拼出来的，
+        不然这一格会因为自己的源码里含那个串而永远红（09-28 同族）。
+        """
+        pinned = ":(exclude)" + "Q2C-v0.1.0-RELEASE-REPORT.md"
+        glob_form = ":(exclude,glob)" + "Q2C-v*-RELEASE-REPORT.md"
+        for rel in ("tools/ci-clean-machine.sh", "tools/make-manifest.py",
+                    "tools/pkg-install-test.sh", os.path.abspath(__file__)):
+            body = open(rel, encoding="utf-8").read()
+            self.assertNotIn(pinned, body,
+                             "%s 里还把发布报告的排除写死成一枚文件名" % os.path.basename(rel))
+        ci = open(os.path.join(ROOT, "tools", "ci-clean-machine.sh"), encoding="utf-8").read()
+        self.assertIn(glob_form, ci,
+                      "归档命令的排除没写成形状⇒下一版报告会跟着包一起发出去")
+        # 清单工具那一侧不在这里读源码文本：它的形状识别由 TestVersionAwareNames 直接调
+        # is_release_report() 现证（读源码正则＝两处口径，容易各自漂）
+        pk = open(os.path.join(ROOT, "tools", "pkg-install-test.sh"), encoding="utf-8").read()
+        self.assertIn('"-RELEASE-REPORT.md"', pk,
+                      "打包门按整枚文件名排除报告，而不是按后缀")
 
     def test_07_verify_targets_the_recorded_commit_not_the_tip(self):
         """校验对象＝清单头记的那一枚；之后往 `evidence/` 加东西**不该**让清单变红。
@@ -154,9 +181,13 @@ class TestManifestScopeRules(unittest.TestCase):
                 return r.stdout
             os.makedirs(os.path.join(td, "tools"))
             os.makedirs(os.path.join(td, "evidence"))
+            os.makedirs(os.path.join(td, "q2c"))
             shutil.copy2(SPEC, os.path.join(td, "tools", "make-manifest.py"))
             with open(os.path.join(td, "hello.md"), "w", encoding="utf-8") as fh:
                 fh.write("# hi\n")
+            # 版本唯一真源：清单文件名必须跟着它（写死 v0.1.0 的旧形状在这里会直接暴露）
+            with open(os.path.join(td, "q2c", "_version.py"), "w", encoding="utf-8") as fh:
+                fh.write('__version__ = "9.9.9"\n')
             git("init", "-q"); git("config", "user.email", "t@t"); git("config", "user.name", "t")
             git("add", "."); git("commit", "-qm", "A")
             head_a = git("rev-parse", "HEAD").strip()      # 清单就以这一枚为身份
@@ -164,6 +195,9 @@ class TestManifestScopeRules(unittest.TestCase):
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                  timeout=120)
             self.assertEqual(out.returncode, 0, out.stdout[-300:])
+            self.assertTrue(os.path.isfile(os.path.join(td, "evidence", "SHA256SUMS-v9.9.9.txt")),
+                            "临时仓里版本是 9.9.9，清单却没跟着起名⇒清单文件名仍由人写死："
+                            "%s" % sorted(os.listdir(os.path.join(td, "evidence"))))
             # 情况一：只加证据件 ⇒ 清单照旧成立
             with open(os.path.join(td, "evidence", "note.txt"), "w", encoding="utf-8") as fh:
                 fh.write("新证据\n")
@@ -198,10 +232,68 @@ class TestManifestScopeRules(unittest.TestCase):
         """
         rel = set(self._paths(self.rel_rows))
         ev = set(self._paths(self.ev_rows))
-        self.assertNotIn("Q2C-v0.1.0-RELEASE-REPORT.md", rel,
-                         "报告混进发布域⇒结论段会自己改动发布物")
-        self.assertIn("Q2C-v0.1.0-RELEASE-REPORT.md", ev,
-                      "报告不在任何一张清单里⇒它改了什么没人钉得住")
+        reports = [n for n in rel | ev if self.m.is_release_report(n)]
+        self.assertTrue(reports, "两张清单里一份报告都没认出⇒识别规则失效，"
+                                 "这一格会永远绿")
+        leaked = [n for n in reports if n in rel]
+        self.assertEqual(leaked, [], "报告混进发布域⇒结论段会自己改动发布物：%s" % leaked)
+        missing = [n for n in reports if n not in ev]
+        self.assertEqual(missing, [], "报告不在任何一张清单里⇒它改了什么没人钉得住：%s" % missing)
+
+
+@unittest.skipUnless(_is_git_repo(), "这里不是 git 仓（解包件）⇒ 清单工具无从取提交，测不到")
+class TestVersionAwareNames(unittest.TestCase):
+    """版本号一升，工装的口径得跟着升，而且**不许靠人记**（主理人 2026-10-04 选 (a) 那条的后果）。
+
+    现在的形状（2026-10-04 现读）：`make-manifest.py` 里 `RELEASE_OUT`／`EVIDENCE_OUT`／
+    `REPORT_FILE` 三处把 `v0.1.0` 写死。升到 v0.1.1 时如果没人想起来改，会发生两件具体的事：
+      1. 新一轮的清单**续写进上一版那张文件**里 ⇒ 两份发布物身份混在同一页，
+         `SHA256SUMS-v0.1.0.txt` 的头部却记着 v0.1.1 的提交——历史被就地改写；
+      2. 新的发布报告 `Q2C-v0.1.1-RELEASE-REPORT.md` 不被排除规则认出 ⇒ 它**进了发布域**，
+         于是"结论那一行会改动发布物字节"这条老毛病原样复发（报告不进包是定过的规矩）。
+    所以：文件名跟着 `q2c.__version__` 走，报告识别改成形状匹配。这两格先红后绿。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.m = _tool()
+
+    def test_manifest_paths_follow_the_package_version(self):
+        from q2c import __version__ as ver
+        rel = self.m.out_for("release")
+        ev = self.m.out_for("evidence")
+        self.assertTrue(rel.endswith("SHA256SUMS-v%s.txt" % ver),
+                        "发布域清单文件名没跟着版本走（现在=%s）。升一次版就会把新一轮的清单"
+                        "续写进旧那一页⇒两份身份混在一页，且旧那页的头部被改写" % os.path.basename(rel))
+        self.assertTrue(ev.endswith("SHA256SUMS-evidence-v%s.txt" % ver),
+                        "证据域清单同上（现在=%s）" % os.path.basename(ev))
+
+    def test_report_rule_is_a_shape_not_one_filename(self):
+        self.assertTrue(hasattr(self.m, "is_release_report"),
+                        "清单工具没有 is_release_report()——报告排除还写死成一枚文件名，"
+                        "下一版报告会直接进发布域")
+        for name in ("Q2C-v0.1.0-RELEASE-REPORT.md", "Q2C-v0.1.1-RELEASE-REPORT.md",
+                     "Q2C-v0.2.0-RELEASE-REPORT.md"):
+            self.assertTrue(self.m.is_release_report(name), "%s 该被认出是发布报告" % name)
+        for name in ("README.md", "DELIVERY-v0.1.1.md", "Q2C-PRODUCT-SPEC-v0.1.md",
+                     "evidence/notes.md", "REPORT.md"):
+            self.assertFalse(self.m.is_release_report(name), "%s 不是发布报告" % name)
+
+    def test_release_scope_holds_no_report_of_any_version(self):
+        head, rows = self.m.build("release")
+        names = [r.split("  ", 1)[1] for r in rows]
+        leaked = [n for n in names if self.m.is_release_report(n)]
+        self.assertEqual(leaked, [],
+                         "发布域混进发布报告：%s ⇒ 写结论那一步会改动发布物字节" % leaked)
+
+    def test_evidence_scope_holds_every_report(self):
+        head, rows = self.m.build("evidence")
+        names = [r.split("  ", 1)[1] for r in rows]
+        reports = [n for n in names if self.m.is_release_report(n)]
+        self.assertGreaterEqual(len(reports), 1,
+                               "证据域里一份报告都没有⇒报告到底归谁管没人说")
+        for name in reports:
+            self.assertTrue(self.m.in_evidence_scope(name))
 
 
 if __name__ == "__main__":

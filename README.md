@@ -16,6 +16,54 @@ Agent A ◄── HANDOFF_RESULT + ACK ── q2c ◄── Agent B
         全程只追加的跟踪：q2c trace <request_id>
 ```
 
+## 装上就跑（pipx／pip，三条命令）
+
+```sh
+pipx install q2c                        # 或：python3 -m pip install q2c
+q2c --help                              # 命令在 PATH 上了
+```
+
+跑通第一次交接（零模型调用，用内置的 loopback 应答器；不需要 Codex 也不需要 Qoder）：
+
+```sh
+export Q2C_HOME=$(mktemp -d)            # 状态根；q2c 不常驻、不留后台进程
+q2c init
+S=$(q2c sessions create --role sender   --adapter loopback --label demo-s |
+   python3 -c 'import json,sys;print(json.load(sys.stdin)["session_id"])')
+R=$(q2c sessions create --role receiver --adapter loopback --label demo-r |
+   python3 -c 'import json,sys;print(json.load(sys.stdin)["session_id"])')
+q2c send --from "$S" --to "$R" --payload "请把这件事接手过去：回一句话说明你收到了这一笔。"
+q2c list                                # 状态分布：这应该只有 1 笔，且落在 ACKED
+```
+
+`send` 的输出里 `"pump": {… "state": "ACKED"}` 就是成功了。`ACKED` 的意思是
+**对方回了话、且能证明它回答的是这一笔**，不是"这活干完了"（见 [PROTOCOL.md](PROTOCOL.md) §4）。
+`--adapter loopback` 不能省：适配器名空缺一律按 `UNKNOWN_ADAPTER` 拒（零副作用、退 2），
+这是设计，不是缺件。
+
+> `pipx install q2c` 要等 PyPI 上真有 `q2c` 这个名字才能跑（现在还没有，见发布报告
+> `PYPI_NAME` 那一格）。今天就能照抄的等价命令是从公开仓装：
+> `pipx install git+https://github.com/6612907-netizen/q2c.git@v0.1.0`。
+> 这两条路都被 `tools/pkg-install-test.sh` 在干净环境里真跑过，不是写下就算。
+
+## 验到哪一枚 CLI（兼容性边界，读代码前先看这一屏）
+
+先把边界说清：桥的核心（协议／台账／跟踪／送达确认）**不含厂商假设**，
+但两个真适配器**认具体 CLI**——所以"验过"这件事只能一枚一枚说。
+
+```
+QODER_CN_VERIFIED=YES （Qoder CN 的公开 CLI `qoderclicn`：与 Codex 双向各一次真调用，两腿都 ACKED）
+QODER_INTERNATIONAL_VERIFIED=NOT_VERIFIED （没跑过，不在支持声明里；照抄本节命令不算已证）
+CODEX_VERIFIED=YES （公开 CLI 档：队列投递＋`exec resume --json` 取答复）
+CORE_PROTOCOL_VENDOR_NEUTRAL=YES （信封字段／状态词表／ACK 六闸里没有厂商字段，也不认厂商取值）
+CN_SPECIFIC_DEPENDENCIES=CLI 名 `qoderclicn`;命令形状 `-p -r <会话号> -w <工作区> --permission-mode auto --output-format json`;起子进程前必须剥掉的 `QODER_AGENT_SDK_*` 那一族变量;收口帧 `{"type":"result", is_error:false, subtype:"success"}` 的单帧形状
+```
+
+`NOT_VERIFIED` 这一档我是怎么定的：**没跑过就写没跑过**。
+换成 International 那一支之前，得把上面那四条 CN 专属依赖逐条核一遍，
+再在真环境里把双向交接跑一次才算验过——我没跑那一支，所以不能替它签字。
+这条纪律和"不拿 Agent 的自述当执行事实"是同一条。
+
 ## Quick Start（60 秒，零模型调用，不需要 Codex 也不需要 Qoder）
 
 ```sh
@@ -169,8 +217,9 @@ artifact、每一次验牙的 JSON、发布报告与两张清单——既不在�
   跟踪里如实记 `collapsed_delivery_start=true`。
 - 两个真适配器都不提供"零副作用新建会话"，需要 `sessions bind` 显式登记已有号。
 - 无 Windows 支持路径（`fcntl` 与进程组语义按 POSIX 实现）。
-- `pip install .` 这一路在本机未验证（没有 setuptools／网络）；
-  免安装路径（`bin/q2c`、`python3 -m q2c`）已验证。
+- 包发到 PyPI 这一步**没做**（需要产品所有者点头）：所以 `pipx install q2c` 暂时取不到名字，
+  能从仓与从 git 装这两条已真跑（`sh tools/pkg-install-test.sh`）；免安装路径（`bin/q2c`、
+  `python3 -m q2c`）同样已验证。
 
 ## 许可
 

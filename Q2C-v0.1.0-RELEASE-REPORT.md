@@ -73,18 +73,34 @@ SECURITY_STATUS=VERIFIED(no-credential-ownership) — 凭据六条（不读钥�
   kill_group 后扫进程表证孙子进程也没留。复跑：python3 -m unittest tests.test_credentials
   （26 格）与 tests/test_process_safety.py（7 格）。
 
-TEST_STATUS=263 格 OK，2 格 SKIP，0 失败 —
+TEST_STATUS=293 格 OK，0 失败；SKIP 分两种读法 —
   命令：python3 -W error::ResourceWarning -m unittest discover -s tests -t .
-  用时 ≈40s。分档现读（同名重复计数已核过：collect 263＝startTest 263，无"收集到却没跑"）：
-    protocol 39／ack 35／stores_and_honesty 32／credentials 26／expiry_cancel_adapter_failure 12／
-    protocol_doc_sync 12／cli 11／idempotency 9／retry_delivery 7／recovery 7／process_safety 7／
-    qoder_terminal_real_fixture 13／real_handoff_evidence 17／trace_readings 8／
-    release_manifest 5／shell_portability 6／codex_stream_real_fixture 6／synthetic_fanout 5／
-    doc_references 3／real_bidirectional 3。
-  判据的牙另有一验：python3 tools/teeth.py ⇒ 25 枚变异全部把对应格打红
-  （evidence/teeth-20261004-173624.json，verdict=TEETH-OK，no_teeth=[]，还原逐字同校）；
-  新增 10 枚对应今天这几处修法（终态词表两枚、九问读数两枚、shell 方言两枚、
-  收口帧三枚、正文形状一枚）。验牙工装自身也修过一处假绿源（shell 里接 | tail 会把退出码偷成 0）。
+  用时 ≈45s（现读 45.5s，2026-10-04 23:24 +0800）。
+  SKIP 两档，分开报（别把第一档的 7 读成"有 7 件事没做"）：
+    · 直跑上面那条命令 ⇒ 7 格 SKIP ＝ 2 格真调用（见下）＋ 5 格「现造件」那组
+      （那一组要 `python -m build`，本机默认解释器没有构建件 ⇒ 如实 skip 并写明缺什么）；
+    · 同一枚提交带上构建件再跑 ⇒ 2 格 SKIP（只剩真调用那两格）：
+      命令 Q2C_BUILD_PYTHON=<装了 build 的解释器> python3 -W error::ResourceWarning -m unittest discover -s tests -t .
+      ⇒ 293 格 OK (skipped=2)。
+  分档现读（22 枚判据件；同名重复计数已核过：collect＝startTest，无"收集到却没跑"）：
+    protocol 39／ack 35／stores_and_honesty 32／credentials 26／packaging 24／
+    real_handoff_evidence 17／qoder_terminal_real_fixture 13／protocol_doc_sync 12／
+    expiry_cancel_adapter_failure 12／cli 11／idempotency 9／trace_readings 8／
+    release_manifest 8／retry_delivery 7／recovery 7／process_safety 7／
+    shell_portability 6／codex_stream_real_fixture 6／synthetic_fanout 5／
+    release_domain_local_paths 3／real_bidirectional 3／doc_references 3。
+  判据的牙另有一验：python3 tools/teeth.py ⇒ **38 枚**变异全部把对应格打红
+  （evidence/pkg-20261004-232254/teeth-38-20261004-232254.json，verdict=TEETH-OK，
+  no_teeth=[]，还原逐字同校＋还原后整包复跑 rc=0）；
+  新增 11 枚对应包分发这一轮（版本双真源、坏链、SPDX 写法、packages 漏列、
+  sdist 漏 tests/__init__.py、Quick Start 幽灵动词、CI 不叫本体脚本、
+  把"测不了"折成退 0、名字核查把"没查到"读成"可用"、归一化、造件时间戳取现在）。
+  **其中一枚是先把自己写的判据证伪的**：`pkg-ci-job-not-calling-the-gate` 打了红后
+  那格仍绿——它认的是"workflow 里出现过那个文件名"，而注释里也写着文件名＝门是虚的。
+  判据改成钉**执行行**（`^\s*sh tools/pkg-install-test\.sh$`）之后才红。原件：
+  evidence/pkg-20261004-232254/teeth-37-noTeeth-found-20261004-232254.json（那一批 37 枚、
+  verdict=TEETH-PROBLEM、no_teeth=[pkg-ci-job-not-calling-the-gate]），不删不藏。
+  验牙工装自身也修过一处假绿源（shell 里接 | tail 会把退出码偷成 0）。
   SKIP 的 2 格＝`tests/test_real_bidirectional.py` 那两格需要"显式给已存在的线程号／会话号"才跑；
   真跑的成立**不靠**那两格，靠下面 REAL_HANDOFF_STATUS 那一组每次从盘上复算的原件判据。
 
@@ -165,6 +181,78 @@ INSTALL_TEST=PASS（本机复演＋独立托管环境双 OS 复验）—
   独立性判定同时收严：真托管要 `RUNNER_ENVIRONMENT=github-hosted` **且** `GITHUB_RUN_ID`，
   缺后者直接 `NOT_INDEPENDENT` 退出——这一条防的就是"我在这台机上把变量一设就自称独立"。
 
+PACKAGE_STATUS=READY(local candidate)／PYPI_PUBLISH=NOT-AUTHORIZED — 发布之后这一轮做的是
+**包分发**：让一个没参与过 Q2C 的人装得上、跑得起来。协议 `q2c/1`、CLI 动词、状态词表
+一个字节都没动；tag `v0.1.0` 与它的 Release 附件也没动（本轮产物是 main 上的新提交，
+不是那一枚冻结点的替换件——这条身份关系别混读）。
+
+  修掉的四处（都是现读抓到的，不是推测）：
+    1. 版本号在 `pyproject.toml:7` 与 `q2c/__init__.py:25` **各写一遍**＝双真源；
+       现在唯一真源＝`q2c/_version.py`，pyproject 走 `[tool.setuptools.dynamic] attr` 取它，
+       且取的是 AST 字面量（不 import ⇒ 构建期不受解释器差异影响，有格钉这个形状）；
+    2. `[project.urls] Protocol = "PROTOCOL.md"` 不是 URL ⇒ 包页面上那行是坏链；
+    3. 造出来的 **sdist 带着 22 枚判据却没有 `tests/__init__.py`**，也没带 `bin/`／`tools/`／
+       `examples/`／文档 ⇒ 别人解包后 `python3 -m unittest discover -s tests -t .` 当场
+       `ImportError: Start directory is not importable`。这一条是本轮最重的发现：
+       DELIVERY 与 README 都在教用户"解开源码包自己复跑判据"，而那句话在发出去的 sdist 上是假的。
+       （v0.1.0 的**发布物**是 `git archive` 包，带全跟踪文件，那句话在它身上仍然成立——两码事。）
+       现在由 `MANIFEST.in` 声明收录，口径与发布域一致：`evidence/` 与本报告仍**不进包**；
+    4. README 只有 clone 那条免安装路，装完包的人没有可抄的命令 ⇒ 新增「装上就跑」一节
+       （三条命令到 ACKED），并由门的第 6 档**逐字抽出那一节真跑**（文档一漂门就红）。
+    另修一处将来必炸的：`license = {text = "MIT"}` 表写法在构建期打弃用告警，
+    告警里明写 **2027-02-18 起不再支持** ⇒ 换 SPDX 串，构建下限随之提到 `setuptools>=77`。
+
+  门（任务书第 6 条）＝`tools/pkg-install-test.sh`，CI 的 `package` job 只叫这一条命令，
+  本机与 CI 不存在两套口径。退出码三档：0 每一档真绿／1 有档不合格／**2 测不了**（不折绿）。
+  现跑读数（`sh tools/pkg-install-test.sh`，产物与日志在临时 OUT_DIR 后入库；原件
+  `evidence/pkg-20261004-233140/pkg-install-test.log`，**head=8af3788（本轮冻结 HEAD）**；
+  更早那一遍 `evidence/pkg-20261004-232254/` 是 head=3662b66 上跑的，两遍都留着）：
+    PKG_BUILD=OK、TWINE_CHECK=OK、WHEEL_INSTALL=OK、CLI_HELP=OK、CLI_VERSION=OK、
+    SDIST_INSTALL=OK、CLI_HELP_FROM_SDIST=OK、QUICKSTART=ACKED、SUITE_ON_INSTALLED=OK、
+    PIPX=OK、REPO_CLEAN=OK ⇒ **PKG_INSTALL_TEST=PASS**
+    wheel sha256 `bdc8f4623b06c348…`、sdist sha256 `f7942596b90e85ff…`（现算，见同目录
+      `SHA256SUMS-pkg-candidate.txt`）。
+    **这两枚哈希会随提交号变，不是漂移**：`SOURCE_DATE_EPOCH` 取的是提交时刻，
+    换一枚提交（3662b66→8af3788）zip 目录项就跟着变；同一枚提交上造两次才应当逐字节相同
+    （wheel 那条由判据 `test_second_build_of_same_sources_matches` 现证，sdist 只按内容对）。
+    第 7 档那句"跑的是要发出去的那份代码"是这么搭的：把 wheel 里的 `q2c/` 解进判据树
+    （`python -m zipfile`），于是这批判据读的就是发出去的那些字节；独立 venv 里装上的
+    console script 能不能跑由第 4～6 档单独证。这一档第一版搭错过：删掉源码 `q2c/` 让
+    import 落 site-packages，结果 7 枚**读源码文本**的格（协议转移表 AST 扫描、文档引用、
+    动态版本号那一行、绝对解释器那条）全成 FileNotFoundError——那是判据树搭错，不是包有问题，
+    按"红测试不污染门"的规矩当场改搭法，没去动那 7 格的断言。
+    该档在临时树里读到 `Ran 293 tests OK (skipped=56)`：**56 是这棵树没有 `.git`、
+    没有 `evidence/`、没有构建件时的诚实 skip**，不是"56 件事没做"；工作树里同批判据只 skip 7 格。
+
+  复现性（本轮自己新写的claim先被自己证伪了一次，按实测改口径）：
+    · wheel：造件时间戳钉到提交时刻（`SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)`）后
+      同一份源码两次造出来**逐字节相同**；不钉时**解出来的内容相同而 zip 目录项不同**
+      （`*.dist-info/METADATA`、`RECORD`、`WHEEL` 是构建期现生成的，mtime＝"现在"）。
+    · sdist：`.tar.gz` 字节**不可复现**（tar 顶层目录条目与 `q2c.egg-info/*` 的 mtime
+      ＋ gzip 头那 4 字节时间戳，三处都跟造件时刻走）。要把这三处也钉平就得自己重排 tar/gzip，
+      那样发出去的就不是 `python -m build` 的原样产物——这条取舍写在判据
+      `test_second_build_of_same_sources_matches` 的 docstring 里，不靠默契。
+      sdist 按**内容身份**校：两次解包文件清单一致＋逐文件 sha256 一致（现算 82 个文件全对上）。
+
+PYPI_NAME=q2c 当前**未被占用**（`tools/pypi-name-check.py` 现跑，退 0）—
+  json_api=http 404、simple_index=http 404、stdlib_clash=no、PYPI_VERDICT=FREE。
+  两个入口都查是这枚工装自己的规矩（只查一个会被缓存／代理糊住）。原件
+  `evidence/pkg-20261004-232254/pypi-name-check.txt`。
+  这一档的**上限**写在它的输出里（`PYPI_LIMIT`）：注册那一刻 PyPI 还有额外规则
+  （与已有名字易混淆、保留与禁用名单等），只有真去上传才知道；上传要账号与令牌，
+  属"公开且不可逆"，本轮**一步都没做**，也没建任何账号／令牌。
+  所以"名字空闲"是实测，"注册一定通过"没写成结论。归因面另有一句：`q2c` 是三字符短名，
+  工业语境里 "Q2C" 常指 quote-to-cash，与本产品无关；若此名曾被他用，PyPI 的 PEP 541
+  流程会先找占用者而不是找我们。
+
+已装的陌生用户路径（现跑，不是写下就算）：
+  · `pipx install <本轮 wheel>` ⇒ 独立环境里 `q2c --help` 退 0（门的第 8 档）；
+  · 从**已发布的 tag** 装：`pip install git+https://github.com/6612907-netizen/q2c.git@v0.1.0`
+    ⇒ 装到 `q2c-0.1.0`、`q2c version` 报 `q2c/1`、`init→sessions→send` 末态 `pump.state=ACKED`
+    （`request_id=req-a22bd1e8fe724676`；原件 `evidence/pkg-20261004-232254/git-install-v0.1.0.txt`）；
+    这一条在这台机器上要**走本机 HTTPS 代理**才连得上 github 的 git 端点（直连 443 超时）——
+    那是这台机器的网络事实，不是命令本身的条件，如实分开写。
+
 KNOWN_LIMITATIONS=
   1. 两条真实双向交接**已跑通**（见 REAL_HANDOFF_STATUS），但样本只有这一批：
      一次跑＝一台开发机、一对账号、一种网络状况。跨账号、跨机器、断网中途重启那些形状
@@ -178,8 +266,10 @@ KNOWN_LIMITATIONS=
      这不是能力，是绕法；`compatibility.json` 与版本漂移监控属 V1.1。
   5. 载荷里用户自写的秘密会被原样投递（桥不解释正文）；SECURITY.md §2 写清三条义务与残余风险。
   6. 无 Windows 支持路径（fcntl／进程组语义按 POSIX）；ps 读数在非 macOS/Linux 上为 UNVERIFIABLE。
-  7. pip 安装本机＝OK（临时副本里构建）；**独立干净环境那一格还没闭合**：第一次 hosted 复验两枚
-     job 因工装自身红（INSTALL_TEST 记了拒因与日志原件），修完必须在新冻结件上重跑并双 OS PASS。
+  7. pip 安装本机＝OK（临时副本里构建）；**独立干净环境那一格已闭合**（双 OS 对同一枚冻结包
+     PASS，读数与原件见 INSTALL_TEST；三轮红的原件都留着）。留下的边界写清楚：那条复验覆盖的是
+     `git archive` 发布包＋venv 里 pip 装；`pipx` 那一档只在开发机上真跑过（门第 8 档），
+     托管 runner 的 macOS 镜像不预装 pipx，CI 里是"先备好 pipx 再跑同一条命令"。
   8. 发布物＝**发布域那一枚冻结提交**（清单头记的那枚号）打出的 `git archive` 包：
      包里只装代码／文档／工装／判据。`evidence/` 与**本报告自身**都不随包走：
      前者是我这台机的现场（绝对路径、会话号、额度读数），后者是"关于这次发布的记录"——
@@ -199,6 +289,16 @@ KNOWN_LIMITATIONS=
      私有的 q2c-staging 与本地构建根都保留（含全部证据与完整历史），未删任何东西。
   10. 真跑的额度与时间成本没被度量成产品指标：第四跑两腿各 ≈2.5 分钟（含 Codex 侧 4 次重连），
       `median<100ms/P95<250ms` 那条口径说的是**桥自身**延迟，测试里由桩腿计时，不含模型推理。
+  11. 包分发这一轮的 **CI `package` job 还没在 GitHub 上真跑过**：门本体（`tools/pkg-install-test.sh`）
+      在本机 PASS，作业文件只是叫同一条命令；把它变成托管环境那一格的证据需要**推 main**
+      （公开写动作，本轮没做，等主理人点头）。在那一格闭合前，"CI 里有打包门"这条只能写成
+      CODE/DOC 级成立，不能写成 RUN 级成立。
+  12. **没上传 PyPI**：不建账号、不要令牌、不碰任何公开不可逆动作。所以 README 里
+      `pipx install q2c` 那句现在是**将来式**（旁边同一屏写明了今天能照抄的 git 安装命令）。
+      名字空闲＝两个公开入口都 404 的实测；"上传时会不会被注册规则拒"没证也不假装证过。
+  13. sdist 的 `.tar.gz` **字节不可复现**（tar 顶层目录与 `q2c.egg-info/*` 的 mtime＋gzip 头时间戳），
+      wheel 钉了 `SOURCE_DATE_EPOCH` 后逐字节可复现。身份口径因此分两条：PyPI 上按文件内容对，
+      `git archive` 发布物按字节对。这条不是懒得修，是"别把非原样的产物当发布物发出去"。
 
 REMOVED_WORKFLOW_RESPONSIBILITIES=
   acceptance grading / review approval authority / release gating(含 Q2C_WAIVE_DEBT 豁免通道) /
@@ -311,8 +411,40 @@ git archive --format=tar.gz --prefix=q2c/ v0.1.0 \
 # 已现算三次同一枚：tag 归档＝release 附件 API digest＝CI 归档验过的字节
 ```
 
-发布后剩余动作：无（本任务书要求的关口已全部闭合）。后续路线（V1.1：事件与唤醒分离、
-  Adapter 隔离、compatibility 矩阵、状态源换 SQLite）另按《V1.1-方向》那份文档推进，不在本次发布范围内。
+发布后剩余动作：**v0.1.0 这一版本本身**没有剩余动作（上面八条闭合）。
+但发布之后 main 上又做了一轮**包分发**（见 PACKAGE_STATUS），那一轮留了三件等主理人落笔：
+`package` job 的托管首跑要不要推 main、PyPI 上传（名字空闲但未注册）、以及
+"上传的 0.1.0 究竟对应 tag 那份字节还是含打包修复的 main"这个身份裁定。
+
+## 发布后一轮（2026-10-04 22:2x–23:3x，包分发）
+
+上面 RELEASE_READY 那八条记的是 **v0.1.0 冻结当时**的数（`Ran 266`、27 枚变异），
+那一枚提交与 tag、Release 附件**都没动**；下面这几个数是这一轮在 main 上现跑的新读数，
+两批别混读：
+
+```
+判据            293 格 OK／0 失败；直跑命令 7 格 SKIP（2 真调用＋5 现造件缺构建工装），
+                带 Q2C_BUILD_PYTHON 跑＝2 格 SKIP
+验牙            38 枚变异全红，verdict=TEETH-OK，no_teeth=[]
+                （其中一枚先把自己写的判据证伪：CI 那格原来认的是"文件名出现过"）
+                原件 evidence/pkg-20261004-232254/teeth-38-20261004-232254.json
+                被它抓出的那一批（37 枚、TEETH-PROBLEM）一并留着，不删不藏
+打包门          sh tools/pkg-install-test.sh ⇒ PKG_INSTALL_TEST=PASS（本轮冻结 HEAD 8af3788）
+候选件          wheel bdc8f4623b06c348…（同一枚提交两次造逐字节相同；换提交则随提交时刻变）
+                sdist f7942596b90e85ff…（字节不可复现，内容 82 个文件逐件相同）
+                原件 evidence/pkg-20261004-233140/（上一遍 3662b66 的在 …-232254/）
+PyPI 名字       q2c 未被占用（json_api 与 simple_index 双 404，退 0）；**未上传、未注册**
+清单            发布域 79 条、证据域 210 条（现读 `python3 tools/make-manifest.py [--scope evidence]`
+                ⇒ 两张都 MANIFEST_OK，发布域 drift=0，清单头记 `2fb1907`）。
+                一句自曝：紧那一笔的提交消息把证据域条数手打成"220"，现读是 210——
+                这正是"手打计数一定漂"的在册老坑，改在这里记账，不改写那笔历史。
+tag／Release     v0.1.0 → 2213ba6／附件 c37374b5…：**未移动、未覆盖、未新增 release**
+```
+
+`PACKAGE_READY` 的口径钉在这里，免得被读成"已经能装"：**本机这一条链已真跑通**
+（造件→元数据→全新 venv 装 wheel 与 sdist→`q2c --help`→README 那一节跑到 ACKED→
+用发出去的那份代码跑整批判据→pipx 独立环境），陌生人今天能从公开仓 tag 装；
+`pipx install q2c` 那句还差 PyPI 上传那一步，而那一步需要主理人点头（账号／令牌／公开不可逆）。
 
 Q2C_V0_1_RELEASE_READY
 ```

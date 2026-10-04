@@ -1,0 +1,30 @@
+# 源码包（sdist）的收录名单。
+#
+# 为什么需要这一枚文件（2026-10-04 现造现读抓到的）：setuptools 默认只把**声明过的包目录**
+# 和元数据引用的那几件放进 sdist。于是发出来的 q2c-0.1.0.tar.gz 里带着 22 枚判据件，
+# 却没有 `tests/__init__.py`（`python3 -m unittest discover -s tests -t .` 直接
+# "Start directory is not importable"），也没有 `bin/`／`tools/`／`examples/`／`PROTOCOL.md`。
+# 结果＝我们向用户承诺"解开源码包就能自己复跑判据"，而那句话在发出去的那枚包上是假的。
+#
+# 口径与 `tools/make-manifest.py` 的发布域一致：代码／文档／工装／判据进包，
+# **证据域与发布报告不进包**（`evidence/` 与 `Q2C-v0.1.0-RELEASE-REPORT.md`）。
+# 这条"说的=做的"由 tests/test_packaging.py 两头钉：静态读本文件，动态读现造出来的件。
+
+include pyproject.toml MANIFEST.in README.md LICENSE
+include PROTOCOL.md SECURITY.md ADAPTERS.md ARCHITECTURE.md CONTRIBUTING.md CHANGELOG.md
+include Q2C-PRODUCT-SPEC-v0.1.md Q2C-BOUNDARY-AUDIT.md TASKBOOK-Q2C-PRODUCT-01.md
+# 交付说明按版本各一份，都随包走（它们是「怎么装、怎么自己验」的说明书，不是发布记录）
+include DELIVERY-v0.1.0.md DELIVERY-v0.1.1.md
+# 发布报告（Q2C-v*-RELEASE-REPORT.md）**故意不声明**＝不进包：报告是「关于发布的记录」，
+# 结论那一行会改动包字节。新增一份根级文档却忘了声明，会被判据抓住
+# （tests/test_packaging.py 里那格校「每个根级非报告 md 都在收录名单里」）。
+
+recursive-include q2c *.py
+recursive-include tests *.py
+recursive-include tools *.py *.sh
+recursive-include bin *
+recursive-include examples *.sh
+
+# 运行期垃圾与编辑器残留不许跟着包跑
+global-exclude *.py[cod]
+global-exclude .DS_Store

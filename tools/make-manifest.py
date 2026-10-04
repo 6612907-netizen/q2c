@@ -18,7 +18,9 @@
     python3 tools/make-manifest.py --scope evidence
 """
 import argparse
+import ast
 import hashlib
+import re
 import os
 import subprocess
 import sys
@@ -29,9 +31,43 @@ EVIDENCE_PREFIX = "evidence/"
 #: 报告是"关于这次发布的记录"（含事后才有的 CI 引用与结论行），不是别人 `pip install` 得到的东西；
 #: 把它算进发布物，就意味着"写下结论"这一步本身会改变发布物字节 ⇒ 结论永远无法自证。
 #: 所以：包里装的是代码／文档／工装／判据；报告与证据随仓与交付副本发布，不随包走。
-RELEASE_EXCLUDE_PREFIXES = (EVIDENCE_PREFIX, "Q2C-v0.1.0-RELEASE-REPORT.md")
-RELEASE_OUT = os.path.join(ROOT, "evidence", "SHA256SUMS-v0.1.0.txt")
-EVIDENCE_OUT = os.path.join(ROOT, "evidence", "SHA256SUMS-evidence-v0.1.0.txt")
+RELEASE_EXCLUDE_PREFIXES = (EVIDENCE_PREFIX,)
+#: 发布报告的**形状**（不是某一枚文件名）：版本一升，旧写法会把新报告当成发布物收进包里，
+#: 上面那条老毛病当场复发。判据 `TestVersionAwareNames` 钉的就是这个形状。
+REPORT_RE = re.compile(r"^Q2C-v\d+\.\d+\.\d+-RELEASE-REPORT\.md$")
+
+
+def is_release_report(path):
+    """这一枚是不是发布报告（任何版本的那一份都算）。"""
+    return bool(REPORT_RE.match(path))
+
+
+def package_version():
+    """版本号从**唯一真源** `q2c/_version.py` 现读（AST 取字面量，不 import）。
+
+    写死在这里就等于第二次真源：升版本时清单文件名会悄悄不跟着走，
+    于是新一轮的清单续写进旧那一页，两份身份混在同一张纸上。
+    """
+    path = os.path.join(ROOT, "q2c", "_version.py")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read(), filename=path)
+    except (OSError, SyntaxError) as exc:
+        raise SystemExit("VERSION_SOURCE_UNREADABLE（%s：%s）" % (path, exc))
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name) and tgt.id == "__version__" \
+                        and isinstance(node.value, ast.Constant):
+                    # 取的是**常量值**，不是那个 AST 节点（写错时文件名会长成
+                    # `SHA256SUMS-vConstant(value='0.1.0', kind=None).txt`——本轮真踩过一次）
+                    return str(node.value.value)
+    raise SystemExit("VERSION_LITERAL_MISSING（q2c/_version.py 里没读到 __version__ 字面量）")
+
+
+VERSION = package_version()
+RELEASE_OUT = os.path.join(ROOT, "evidence", "SHA256SUMS-v%s.txt" % VERSION)
+EVIDENCE_OUT = os.path.join(ROOT, "evidence", "SHA256SUMS-evidence-v%s.txt" % VERSION)
 OUT = RELEASE_OUT      # 兼容旧引用；两张清单各走 out_for(scope)
 
 
@@ -53,12 +89,13 @@ def blob_of(path):
     return git("show", "HEAD:%s" % path)
 
 
-REPORT_FILE = "Q2C-v0.1.0-RELEASE-REPORT.md"
+# REPORT_FILE 这枚写死的名字已经删掉：报告改由 `is_release_report()` 认形状。
+# 留着它＝升一次版本就多一处"没人想起来改"的地方（判据 TestVersionAwareNames）。
 
 
 def in_evidence_scope(path):
     """证据域＝`evidence/` 下的一切 ＋ 发布报告本身（它属于"关于发布的记录"）。"""
-    return path.startswith(EVIDENCE_PREFIX) or path == REPORT_FILE
+    return path.startswith(EVIDENCE_PREFIX) or is_release_report(path)
 
 
 def out_for(scope):
@@ -152,7 +189,7 @@ def verify(scope="release"):
     drift = ""
     if scope == "release":
         d = git("diff", "--name-only", rev, head, "--", ".",
-                ":(exclude)evidence", ":(exclude)" + REPORT_FILE)
+                ":(exclude)evidence", ":(exclude,glob)Q2C-v*-RELEASE-REPORT.md")
         drift = d.decode("utf-8").strip().splitlines()
     print("manifest_head=%s current_head=%s %s" % (
         rev[:12], head[:12], "SAME" if rev == head else "清单做于 %s（发布物身份就是这一枚）" % rev[:12]))

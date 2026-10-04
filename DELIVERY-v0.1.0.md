@@ -15,6 +15,7 @@
 | 独立复验 | 公开仓 run 37202188662（托管 macOS＋Ubuntu 双 job success）＋ run 37202515727（6 组合 ci 全绿） |
 | 内容身份 | 发布物清单头记 `464e518548017a92f8b8975aa7694212b2919e4b`（两张清单见 `evidence/`） |
 | 私有侧 | `q2c-staging`（私有，完整历史＋全部证据，未删）；其 Actions 已关，权威 CI 在公开仓 |
+| 发布后一轮 | main 上另有"包分发"那几笔（wheel／sdist、pip／pipx、CI 打包门）：**tag 与 Release 附件未动**，也**未上传 PyPI**；读数与身份见 `Q2C-v0.1.0-RELEASE-REPORT.md` 末节「发布后一轮」 |
 
 ## 三行自检（装了 Python 3.9+ 的任何一台机器）
 

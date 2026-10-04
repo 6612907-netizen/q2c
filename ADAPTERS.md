@@ -57,6 +57,13 @@ qoderclicn -p -r <会话号> [-w <工作区>] --permission-mode auto --output-fo
   一旦以为自己还在 SDK 里，会要求 stream-json 并直接拒启，表现是"叫起来就失败"，
   很容易被误读成对侧不肯回话。
 
+**验到哪一枚**：代码里 `q2c/adapters/qoder.py` 写的是 `BIN = "qoderclicn"`——真跑过的那条腿
+是 **Qoder CN** 的公开 CLI。Qoder **International 没跑过 ⇒ 记 `NOT_VERIFIED`，不在支持声明里**；
+上面那条命令对它不构成任何保证。要把这条腿换到另一支，得先逐条核这四件：CLI 名、
+参数形状（`-p -r -w --permission-mode --output-format`）、`QODER_AGENT_SDK_*` 剥离、
+`{"type":"result", …}` 单帧收口；核完还得在真环境里跑一次双向交接拿到 ACKED 才算验过。
+这一档与 README「验到哪一枚 CLI」那屏同源，判据在 `tests/test_vendor_claims.py`。
+
 ## 3. 逻辑会话与 provider 号（§7）
 
 ```

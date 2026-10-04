@@ -25,10 +25,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEST_REF = re.compile(r"tests/(test_[a-z0-9_]+\.py)")
 MODULE_REF = re.compile(r"(q2c/(?:adapters/)?[a-z_]+\.py)")
 
-DOC_GLOBS = ["PROTOCOL.md", "ADAPTERS.md", "ARCHITECTURE.md", "SECURITY.md", "README.md",
-             "CONTRIBUTING.md", "CHANGELOG.md", "Q2C-PRODUCT-SPEC-v0.1.md",
-             "Q2C-BOUNDARY-AUDIT.md", "TASKBOOK-Q2C-PRODUCT-01.md",
-             "Q2C-v0.1.0-RELEASE-REPORT.md"]
+#: 仓根每一枚 md 都在射程内（**按目录现读，不写名单**）：写名单＝新增一份就少扫一份，
+#: 而新写的那一份恰恰最爱抄错引用。
+DOC_GLOBS = sorted(f for f in os.listdir(ROOT) if f.endswith(".md"))
 
 
 def _sources():
