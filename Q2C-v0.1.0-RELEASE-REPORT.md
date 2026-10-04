@@ -194,8 +194,9 @@ KNOWN_LIMITATIONS=
        git diff --name-only <清单头那枚> HEAD -- . ':(exclude)evidence' ':(exclude)Q2C-v0.1.0-RELEASE-REPORT.md'
                                                   ⇒ 应为空
      现读结果存在 evidence/release-freeze-readings.txt。
-  9. 未公开、未打 tag、未发 release：本轮按主理人令只做到"可发布准备"；
-     private staging 仓（6612907-netizen/q2c-staging）只为跑独立 CI 而存在，不是发布物。
+  9. **已公开发布**（主理人 2026-10-04 19:1x 一句"发"之后执行，逐条见下面 PUBLISHED 段）：
+     公开仓＝github.com/6612907-netizen/q2c，tag `v0.1.0`，release 附件＝被独立环境验过的那枚字节。
+     私有的 q2c-staging 与本地构建根都保留（含全部证据与完整历史），未删任何东西。
   10. 真跑的额度与时间成本没被度量成产品指标：第四跑两腿各 ≈2.5 分钟（含 Codex 侧 4 次重连），
       `median<100ms/P95<250ms` 那条口径说的是**桥自身**延迟，测试里由桩腿计时，不含模型推理。
 
@@ -260,13 +261,32 @@ READY 那八件交付物（主理人 2026-10-04 裁定第 6 条要求一次给�
        shasum -a 256 q2c-v0.1.0-source.tar.gz    # 期望 016884541e…＝CI 归档并验过的那枚字节
        gh release create v0.1.0 --title "q2c v0.1.0" --notes-file <发布说明> q2c-v0.1.0-source.tar.gz
 
-距离 v0.1.0 公开发布还剩硬关口：1 个（也是唯一一个不可逆外部动作）。
-  1) 公开建仓／打 tag／发 release——按主理人令**停在最终发布门**，需要一句明示才做。
-     已闭的关口在此写明，免得下次又要我复述：真实双向交接（第四跑两腿各 ACKED）；
-     独立干净环境复验（run 37195934582 双 OS PASS）；发布物身份与清单（MANIFEST_OK＋drift=0）；
-     判据与验牙（266 格／27 枚 TEETH-OK）。
-  另记一笔不改史：本轮共四次冻结，前三次（da699a3／27c8e7f／56f09f4）都**作废留档**，
-  作废原因写在各自提交与本报告的修复段里；旧一次独立复验的读数随修复作废，已在新冻结件上重跑。
+
+PUBLISHED=v0.1.0（本节所有数取自 `evidence/publish-v0.1.0.txt`，那一份由现算生成，不手打）
+  公开仓 https://github.com/6612907-netizen/q2c （visibility=PUBLIC，匿名可读已核）
+  release   https://github.com/6612907-netizen/q2c/releases/tag/v0.1.0
+  tag       v0.1.0 → tag 对象 a13f86ae59ad27e3840ea7fcb1f8df58dbd41d61
+            → 指向提交 2213ba68561d8562d666f51b41aa9876f8b2776a（公开仓 main 的同枚提交）
+  发布物     q2c-v0.1.0-source.tar.gz，SHA256 c37374b5868db984604391f4a165edf852cae93ea7fec81f2440b1f5b63afd4c
+            三处同字节已核：release 下载回来＝`git archive v0.1.0`（--prefix=q2c/，排除 evidence 与本报告）
+            ＝GitHub Actions 归档并验过的那一枚；包内 71 件＝发布域清单项逐件哈希一致
+  独立复验   run 37202188662（macOS＋ubuntu 双 job success：`CI_CLEAN_MACHINE=PASS`、
+            `PIP_INSTALL=OK`、`Ran 269 tests`、末行 `CLEAN_MACHINE_STATE=ACKED`）
+            ＋ run 37202188628（六组合 ci 全绿）
+  公开仓里有什么／没有什么   71 件发布域 ＋ 本报告；**不含 `evidence/`**（本机绝对路径、外置卷标、
+            会话号、额度读数都不该公开），也**不推完整历史**（历史里全是证据件的 blob）。
+            这条边界在 README"验证证据在哪"一节写明，并由 `tests/test_release_domain_local_paths.py`
+            在发布域扫本机坐标；这一格自己也红过一次（它一开始假设"仓里必须有证据件"），
+            断言改对之后公开仓才绿——记在这里，不遮。
+  发布前脱敏   家目录绝对路径（带用户名）、外置卷挂载点前缀（带卷标）、另一个私人项目的目录名
+            → 全部换成 `<本地构建根>`／`<外部卷>`／`<插件交付目录>` 形态占位；`evidence/` 一字未改。
+            （这三类模式的**字面量**不写进发布域文档——写了就该被自己的扫描格判红，
+            事实上第一版报告就是这么红的：规则没错，是我在规则里写了规则要抓的东西。）
+  作废的本地冻结（未推送，仅本地留档）  da699a3／27c8e7f／56f09f4／818106b／ee95466，
+            原因逐笔写在提交正文；最后一次 464e518 是被发布的那枚内容身份。
+
+发布后剩余动作：无（本任务书要求的关口已全部闭合）。后续路线（V1.1：事件与唤醒分离、
+  Adapter 隔离、compatibility 矩阵、状态源换 SQLite）另按《V1.1-方向》那份文档推进，不在本次发布范围内。
 
 Q2C_V0_1_RELEASE_READY
 ```
