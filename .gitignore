@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.DS_Store
+.q2c/
+evidence/teeth-*.json.tmp
+*.teeth-backup
+# 构建产物（`pip install .` 会在这儿落 build/ 与 *.egg-info/，属可再生产物，不进仓）
+build/
+*.egg-info/
+.venv/
+venv/
+# flock 锚件是运行时留下的零字节占位，不是证据也不是发布物
+**/state/*.lock
+**/state/*.rev

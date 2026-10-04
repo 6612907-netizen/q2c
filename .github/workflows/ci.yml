@@ -1,0 +1,27 @@
+name: ci
+# 判据只测代码回归，不掺"能不能放行"这类发布状态（见 CONTRIBUTING.md：两者不许互相染色）。
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.9", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: 协议与文档一致性 / 全部判据（含 1000 枚合成交接）
+        run: |
+          python -W error::ResourceWarning -m unittest discover -s tests -t . -v
+      - name: Quick Start（免安装，走真子进程）
+        run: ./bin/q2c init && ./bin/q2c doctor && sh examples/quickstart.sh
+      - name: 审计与判据计数现读（不许手抄）
+        run: |
+          python3 tools/count-audit.py
+          python3 tools/report-readings.py --json

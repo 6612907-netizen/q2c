@@ -1,0 +1,40 @@
+name: clean-machine（独立托管环境复验冻结发布物）
+# 这条作业只为一个目的服务：证明"发布包在**不是开发机**的环境里装得上、跑得通、留得下证据"。
+# 产物：环境身份、包 SHA256、完整日志、末行 CLEAN_MACHINE_STATE，全部作为 artifact 回传。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要复验的冻结提交（SHA 或 tag）
+        required: false
+        default: ""
+  push:
+    branches: [main]
+
+jobs:
+  clean-machine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 记录提交号
+        id: sha
+        run: echo "sha=${Q2C_REF:-$(git rev-parse HEAD)}" >> "$GITHUB_OUTPUT"
+        env:
+          Q2C_REF: ${{ github.event.inputs.ref }}
+      - name: 独立干净环境复验
+        env:
+          GIT_SHA: ${{ steps.sha.outputs.sha }}
+          OUT_DIR: ${{ github.workspace }}/clean-machine-out
+        run: sh tools/ci-clean-machine.sh "$GIT_SHA"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clean-machine-${{ matrix.os }}
+          path: clean-machine-out/
+          if-no-files-found: error

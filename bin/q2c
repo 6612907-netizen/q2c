@@ -1,0 +1,5 @@
+#!/bin/sh
+# 免安装入口：clone 下来就能跑，不需要 pip。
+# 用法：PATH 里带上本目录，或直接 ./bin/q2c doctor
+here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec "${Q2C_PYTHON:-python3}" -m q2c "$@"
