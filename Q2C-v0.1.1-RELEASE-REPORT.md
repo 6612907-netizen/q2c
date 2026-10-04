@@ -79,18 +79,46 @@ CN_SPECIFIC_DEPENDENCIES=CLI 名 qoderclicn; 命令形状 -p -r <会话号> -w <
 读数：<见下面 §4 托管首跑那一屏，跑完填>
 ```
 
-## 4. 托管环境与独立复验（本轮的关口在这里）
+## 4. 托管环境与独立复验（已闭合：主理人裁定①）
 
 ```
-CI_MAIN_PUSH=<待推 main 后填 run 号>
-CI_PACKAGE_JOB=<待填：ubuntu-latest py3.13／macos-latest py3.13／ubuntu-latest py3.9>
-CI_TESTS_JOB=<现成那道 ci.yml：3 个 Python × 双 OS>
-CI_CLEAN_MACHINE=<现成那道：对冻结提交做独立干净机复验，双 OS>
-PACKAGE_SHA_WHEEL=<现算>
-PACKAGE_SHA_SDIST=<现算>
+公开仓 main=bfa207ffaf2dd1a43652098b989ccb010e645159（发布域 82 件＋两份发布报告＝84 件，
+  与私有冻结 1f8c2ac 逐件比哈希：84/84 相同，多 0 缺 0）
+CI_MAIN_PUSH=run 37217484939 ⇒ success（3 Python × 双 OS 矩阵）
+CI_TESTS_JOB=success（同一 run 内）
+CI_PACKAGE_JOB=run 37217484949 ⇒ success，三个组合都 PKG_INSTALL_TEST=PASS
+  （ubuntu-3.13／macos-3.13／ubuntu-3.9；托管环境首跑，这一格从此是 RUN 级证据，不再是本机复演）
+CI_CLEAN_MACHINE=run 37217484951 ⇒ success
+  双 OS 都 tests_rc=0／clean_machine_rc=0／CLEAN_MACHINE_STATE=ACKED／version=0.1.1
+原件：evidence/ci-green-bfa207f-004225/（三个 run 的完整日志＋元数据＋README 那一页）
+先红的那一轮（不删不藏）：evidence/ci-37216758223-package-37216758210-cleanmachine-red/
+  红在**我自己新写的一格判据**（它要求包里有发布报告，而报告按分工不随包走）；
+  本机同形状复演先复现出同一读数，再改判据、再复演转绿，最后才重跑托管（见 §5 与提交 fedb2e2）
 ```
 
-**这一屏没填齐之前，本轮结论只能是 BLOCKED。** 规则照旧：托管环境那一格不许拿本机绿顶替。
+构建身份的实测边界（三台机器现算对出来的，不是推断）：
+
+```
+同一枚 tag 造出来的 wheel：
+  890158f21954886c…  ＝ macos-3.13 作业 ＝ ubuntu-3.13 作业 ＝ 本机 py3.14（三处同一枚）
+  7940b1559e949341…  ＝ ubuntu-3.9 作业（构建工具版本不同）
+sdist：四处各不相同（tar 目录条目 mtime ＋ gzip 头随造件时刻变，见 §3 那条取舍）
+⇒ 发布物身份按**实际上传的那一枚**的哈希对，不写"任何机器重造都相同"
+```
+
+发布物（GitHub Release `v0.1.1`，附件 digest 由 GitHub 现算并与本机一致）：
+
+```
+tag        v0.1.1 → tag 对象 0d35101d5b3e1e30d41a47660510803f37404eb2 → 提交 bfa207f
+release    https://github.com/6612907-netizen/q2c/releases/tag/v0.1.1
+wheel      q2c-0.1.1-py3-none-any.whl   sha256 890158f21954886c18902349b07f7e08afaf809df23e6759622e5ac2f2a54469
+sdist      q2c-0.1.1.tar.gz             sha256 c8f183c6d5cf607cec7f5aa8445c211e54a95b5e24f30c304c2533c3d5b6f000
+源码包      q2c-v0.1.1-source.tar.gz      sha256 d0df8fd1b55ead89c285e5fa959eadd67f449398b013ff35ab388b6a91961bce（82 件）
+v0.1.0     未动：tag 仍是 a13f86ae→2213ba6；release 附件 digest 仍是 c37374b5868db984…（本轮现算复核过）
+陌生人路径  pip install git+https://github.com/6612907-netizen/q2c.git@v0.1.1 在全新 venv 里装成，
+            q2c version 报 0.1.1/q2c/1，init→sessions→send 末态 pump.state=ACKED（本机现跑）
+```
+
 
 ## 5. 判据与验牙（现读）
 
@@ -142,9 +170,12 @@ IF_NAME_REFUSED=STOP，不自改包名，回报主理人裁决
 
 ## 8. 已知局限（不粉饰）
 
-1. PyPI 未上传 ⇒ `pipx install q2c` 目前是将来式；今天能照抄的是 git 那条。
-2. CI 的 `package` job 在托管环境的**首跑**结果决定 §4 那一格；本机 PASS 不顶替它。
-3. sdist 的 `.tar.gz` 字节不可复现（三处随造件时刻变）；wheel 钉提交时刻后可复现。身份口径分两条。
+1. PyPI 未上传 ⇒ `pipx install q2c` 目前是将来式；今天能照抄的是 git 那条（已现跑：v0.1.1 tag 直装到 ACKED）。
+2. 托管 CI 首跑**已闭合**（§4：ci／package／clean-machine 三道在同一枚 bfa207f 上全 success）。
+   但 wheel 的可复现性只到"同一套构建工具版本"这一档（py3.9 那档算出另一枚），
+   sdist 只有内容可复现、字节不可复现——口径见 §4，别读成"任何机器重造都相同"。
+3. `package` 作业里 pipx 那一档在托管 macOS 上由"先备好 pipx"那一步现装现用；
+   本机与托管都跑过，但没跑过"完全没有 pipx 且装不上"的环境（那种按脚本口径退 2＝测不了，不折绿）。
 4. Qoder International 没跑过；CN 那支的兼容性也只覆盖公开 CLI 档，不碰私有队列库与 sessions JSONL。
 5. 无 Windows 支持路径（`fcntl`／进程组语义按 POSIX）；`ps` 读数在非 macOS/Linux 上 UNVERIFIABLE。
 6. 真交接样本仍只有一批（一台机、一对账号、一种网络状况）。
@@ -152,11 +183,43 @@ IF_NAME_REFUSED=STOP，不自改包名，回报主理人裁决
 ## 9. 距离发布还剩硬关口
 
 ```
-1) 推 main 后托管 CI（ci／clean-machine／package）全绿——红就按普通工程问题定位修，不降 Gate、不盲目 rerun；
-2) 建 v0.1.1 tag 与 GitHub Release（附件＝被 CI 验过的那枚字节）；
-3) PyPI 身份授权（主理人本人）→ 上传 q2c 0.1.1 → 从公开 PyPI 在全新环境装并跑到 ACKED → 回读 metadata。
+1) 推 main 后托管 CI（ci／clean-machine／package）全绿            ⇒ 已闭合（§4，run 37217484939／49／51）
+2) 建 v0.1.1 tag 与 GitHub Release（附件＝被 CI 验过的那枚字节）    ⇒ 已闭合（§4 末尾那屏）
+3) PyPI：主理人本人完成身份授权 → 上传 q2c 0.1.1 →
+   从公开 PyPI 在全新环境 pipx install q2c → q2c --help → Quick Start 到 ACKED → 回读 metadata
+                                                                       ⇒ 未闭合，等第 3 条
 ```
 
-距离 v0.1.1 发布还剩硬关口：3 个。
+距离 v0.1.1 发布还剩硬关口：1 个（就是上面第 3 条，且它只能由主理人本人开第一道门）。
+
+## 10. PyPI 那一步要怎么走（我不代做、不索取凭证）
+
+发布通道选 GitHub Trusted Publisher（OIDC），原因是它**不需要任何长期 token 落在这台机器或这个仓里**：
+`publish.yml` 里 `permissions: id-token: write`、不引用任何 `secrets.*`，
+PyPI 在上传那一刻用 OIDC 换一张短期凭证。
+
+需要主理人本人做的（一次性的，两分钟）：
+
+1. 打开 https://pypi.org/ 登录后，进账户侧栏的 **Publishing**（新项目的 publisher 在这里加，
+   因为此时项目还不存在；PyPI 允许登记一个指向不存在项目的 publisher，首次上传会当场创建项目）。
+2. 选 "Add a new publisher" → **GitHub Actions**，逐格填：
+   - Owner：`6612907-netizen`
+   - Repository name：`q2c`
+   - Workflow name：`publish.yml`（必须与仓里那枚文件名逐字一致）
+   - Environment name：`pypi`（与 `publish.yml` 里 `environment: pypi` 一致；若不用环境就留空）
+   - Project name：`q2c`
+3. （建议）在 GitHub 仓里给 `pypi` 这个 environment 设 reviewer，让"点发布"留痕。
+
+然后由我触发（或他触发）`Actions → publish → Run workflow`，ref 填 `v0.1.1`。
+作业自己会做四件事，任何一步不过就停手不发：
+
+- 前置闸：该 ref 上 ci／clean-machine／package 三道必须都是 `success`，
+  缺结论退 2（"没证据"），非 success 退 1（"不合格"）——宁可拒发，不发没验过的那一枚；
+- 干净构建（时间戳钉在该提交）＋ `twine check`；
+- 全新 venv 装 wheel，`q2c --help`，再用 loopback（零模型调用）跑到 `ACKED`；
+- 上传后回读 PyPI 的 version／name／requires_python／project_urls，版本对不上就红。
+
+若 PyPI 在登记或上传那一刻**拒绝 `q2c` 这个名字**（短名保留、易混淆判定等注册期规则都可能，
+这是 §PYPI_NAME 那一档写明的"证不了"部分）：**我停手，不自改包名**，回来由主理人裁决。
 
 Q2C_V0_1_1_BLOCKED
