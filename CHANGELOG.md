@@ -55,6 +55,13 @@ git diff --name-only v0.1.0..<v0.1.1 冻结点> -- q2c/    # 只应出现 _versi
   → 回读 metadata（`info.version=0.1.1`、`requires_python`、六条 project URLs、附件 sha256，
   以及两枚 sdist「解出 84 个文件逐件 sha256 相同」的内容比对）。
 - 名字 `q2c` 注册**通过**（此前只能报「两个公开入口都 404＝未被占用」）。
+- 发布后 main 又前进（只动文档／判据／取证件，**tag 与三件附件一字未动**）：托管三道在新提交上复绿
+  （ci 37248202732／package 37248202735／clean-machine 37248202724）。同一轮修掉
+  `tools/ci-readings.py` 的一起**假读数**：整 run 的合流日志里 `--os` 只是抬头标签，取数扫整篇，
+  于是 macos 与 ubuntu 两页读数逐字相同（"双 OS 各自复验通过"实际是同一枚 OS 被数了两遍）；
+  现在按 job 取数，合流日志不指 `--os` ⇒ `AMBIGUOUS_LOG` 退 2，没有那一档 runner ⇒ `OS_NOT_IN_LOG` 退 2，
+  判据 `tests/test_ci_readings.py` 六格先红后绿。另把两格无牙判据改成钉"那一块／那一行"
+  （旧写法 `assertIn(字面, 整篇文件)` 在注释里就写着那个字面时永远绿）。
 
 ### 未闭合（不粉饰）
 - 真实双向交接那两格仍需 `Q2C_LIVE=1` 显式授权才跑；本轮一枚模型调用都没烧 ⇒ 原件仍是 v0.1.0 那批，
