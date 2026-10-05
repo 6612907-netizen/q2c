@@ -338,6 +338,22 @@ dynamic = ["version"]''',
      '''print("pypi_version=%s" % d.get("version", ""))''',
      "tests.test_packaging.Test07_PyPI发布作业.test_readback_uses_the_field_pypi_actually_fills",
      "回读取一个 PyPI 早就不填的顶层键⇒上传成功也被报成失败（0.1.1 那次就这么红的）"),
+    # ---- CI 读数工装本身（2026-10-05 09:0x：它曾把两枚 job 折成同一页假读数）----
+    ("ci-readings-os-filter-decorative", "tools/ci-readings.py",
+     '''        keep = [ln for ln in lines if os_name.strip().lower() in _job_of(ln).lower()]''',
+     '''        keep = lines''',
+     "tests.test_ci_readings.Test01_按runner取数.test_two_jobs_in_one_log_do_not_collapse_into_one_page",
+     "把 --os 的过滤摘掉＝两枚 job 的读数撞成同一页，报告里那句\"双 OS 各自通过\"当场变假话"),
+    ("ci-readings-ambiguous-accepted", "tools/ci-readings.py",
+     '''    elif len(jobs) > 1:''',
+     '''    elif False:''',
+     "tests.test_ci_readings.Test01_按runner取数.test_multi_job_log_without_os_is_refused",
+     "合流日志不指明朝哪枚 job 取数时，工具必须拒（退 2）而不是随手挑一条当整体"),
+    ("ci-readings-package-name-pinned-to-010", "tools/ci-readings.py",
+     '''    ("package_sha_line", r"^([0-9a-f]{64}\\s+q2c-v\\d+\\.\\d+\\.\\d+-source\\.tar\\.gz)"),''',
+     '''    ("package_sha_line", r"^([0-9a-f]{64})\\s+q2c-v0\\.1\\.0-source\\.tar\\.gz"),''',
+     "tests.test_ci_readings.Test02_取数键不许钉版本号.test_package_sha_line_follows_the_version_being_released",
+     "取数键写死上一版文件名⇒0.1.1 的包 SHA 读成 MISSING，而 MISSING 会被抄成\"那一格没做\""),
 ]
 
 

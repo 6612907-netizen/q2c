@@ -692,9 +692,23 @@ class Test07_PyPI发布作业(unittest.TestCase):
                          "发布必须手动触发：自动发布＝把\"要不要发\"交给了 CI，那决定权在主理人")
 
     def test_precheck_reads_a_source_that_actually_carries_names(self):
-        """前置闸要问**真带名字与结论的那个接口**，不是键都不存在的那个。"""
-        self.assertIn("actions/runs", self.body,
-                      "前置闸没查 actions/runs（这个接口才有 .name 与 .conclusion）")
+        """前置闸要问**真带名字与结论的那个接口**，而且钉在**执行的那一行**上。
+
+        旧写法是 `assertIn("actions/runs", 整篇)`——那断言说的是"这个字符串在文件里出现过"。
+        而我在上面第 55 行的注释里就写了"查的是 actions/runs"⇒ 把执行行换成 check-suites，
+        这一格照样绿。2026-10-05 验牙把这件事报成 NO-TEETH（`publish-gate-wrong-endpoint`），
+        和 #71 那一族是同一个错：**认得到字面，认不到"它是不是真会被执行的那一行"**。
+        现在取 `gh api` 那几行本身：URL 必须指 `actions/runs?head_sha=`，那几行里不许出现 check-suites。
+        """
+        calls = [ln for ln in self.body.splitlines()
+                 if re.match(r"^\s*(?:if\s+!?\s*)?gh api\b", ln)]
+        self.assertTrue(calls, "publish.yml 里没有会被执行的 gh api 那一行（注释里提过≠它会去问）")
+        joined = "\n".join(calls)
+        self.assertIn("actions/runs?head_sha=", joined,
+                      "前置闸问的不是带 .name／.conclusion 的那个接口：换成别的端点，"
+                      "三道绿作业会被读成\"没有结论\"，发布被无故拒掉")
+        self.assertNotIn("check-suites", joined,
+                         "gh api 那一行又去碰 check-suites——那个响应里没有工作流名那一键")
         self.assertNotIn("workflow_name", self.body,
                          "又在用 check-suites 的 workflow_name 做匹配——那个键在这个响应里不存在，"
                          "匹配永远为空，于是三道绿作业被读成\"没有结论\"")

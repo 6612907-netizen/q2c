@@ -132,6 +132,20 @@ class Test04_发布记录里那一档也在(unittest.TestCase):
         return sorted(f for f in os.listdir(ROOT)
                       if re.match(r"^Q2C-v\d+\.\d+\.\d+-RELEASE-REPORT\.md$", f))
 
+    def _verdict_block(self, text):
+        """取**那一块**：四行键名以行首出现在同一个围栏块里的那一块；取不到就返回 None。
+
+        为什么不整文件 grep（2026-10-05 验牙报的 NO-TEETH，不是我改口）：
+        把 `QODER_CN_VERIFIED=YES` 那一行换成不提键名的写法后，旧断言 `assertIn(key, 整篇)` 照样绿——
+        因为 §7 讲 PyPI 回读时我又把那两个键名**在正文里提了一遍**（现读第 173 行）。
+        钉的对象是"机器可读的那一块边界声明"，不是那几个字面出现过。
+        """
+        for m in re.finditer(r"^[ \t]*```[^\n]*\n(.*?)^[ \t]*```", text, re.M | re.S):
+            body = m.group(1)
+            if all(re.search(r"^%s=(\S+)" % key, body, re.M) for key in REQUIRED_KEYS):
+                return body
+        return None
+
     def test_release_report_has_the_vendor_verdict_block(self):
         """有发布报告的那棵树里，报告必须写厂商边界（报告**故意不进包**，见下面那格的 skip 理由）。"""
         reports = self._reports()
@@ -142,11 +156,15 @@ class Test04_发布记录里那一档也在(unittest.TestCase):
             self.skipTest("这棵树里没有发布报告（发布报告故意不随包走）⇒ 本格无对象可核；"
                           "包内的边界由 Test02 对 README 现证")
         latest = reports[-1]
-        text = read(latest)
-        for key in ("QODER_CN_VERIFIED", "QODER_INTERNATIONAL_VERIFIED"):
-            self.assertIn(key, text,
-                          "%s 里没有 %s 这一档⇒读发布记录的人不知道该腿验到哪一层"
-                          % (latest, key))
+        block = self._verdict_block(read(latest))
+        self.assertIsNotNone(
+            block, "%s 里找不到那一块机器可读的厂商边界（四行键名要在同一个围栏块里、各自成行）；"
+                   "正文里叙述性地提一下键名不算——那一句改天会被删，边界不能靠叙述活着" % latest)
+        for key, want in REQUIRED_KEYS.items():
+            got = re.search(r"^%s=(\S+)" % key, block, re.M).group(1)
+            self.assertEqual(got, want,
+                             "%s 里 %s 的取值是 %s（这一档是结论不是措辞：验没验过由它说）"
+                             % (latest, key, got))
 
     def test_report_exclusion_rule_covers_the_latest_report(self):
         """这一格把上一条的 skip 理由**自己钉住**：新报告确实落在"不随包走"的那条规则里。

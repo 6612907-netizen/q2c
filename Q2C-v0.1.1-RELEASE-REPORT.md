@@ -120,31 +120,69 @@ v0.1.0     未动：tag 仍是 a13f86ae→2213ba6；release 附件 digest 仍是
 ```
 
 
-## 5. 判据与验牙（现读）
+发布之后 main 又往前走了一截（只动文档／判据／取证件，**tag 与三件附件一字未动**）：
 
 ```
-TEST_STATUS=306 格 OK／0 失败
+公开仓 main 5e1d0dd4ef7e6d46e1483e4204a50c7480ba392b（发布域 83 件＋两份报告＝85 件，
+  与私有构建根同一批跟踪文件逐件比集合：多 0 缺 0；比集合用 `git ls-files -z`，
+  不带 -z 时含中文的路径被 quotePath 加引号，我一度把 85 读成 86）
+镜像里跑在册门：sh tools/gate-commit.sh ⇒ GATE_COMMIT=PASS，Ran 314 tests OK (skipped=46)
+  （那 46 格是公开仓没有 evidence/ 的如实 skip；`REAL_HANDOFF_EVIDENCE=NONE` 这行
+   在**绿的**托管 run 里同样出现，所以它是读数不是判决——别看见它就当红）
+CI_MAIN_PUSH=run 37248202732 ⇒ success（六个组各 "Ran 314 tests"）
+CI_PACKAGE_JOB=run 37248202735 ⇒ success（三组合都 PKG_INSTALL_TEST=PASS）
+CI_CLEAN_MACHINE=run 37248202724 ⇒ success
+  macos：Darwin arm64／Python 3.14.7／hostname iad20-eo1212-…／request_id=req-01f6ba784f6f4839
+  ubuntu：Linux x86_64／Python 3.12.3／hostname runnervm8df0l／request_id=req-f2811c8b6e6c4e91
+  两页各取各的 job ⇒ 才算"双 OS"；这一枚包是 `ae9a4c77…q2c-v0.1.1-source.tar.gz`（83 件，
+  由 5e1d0dd 现造），**不是**已发布那枚附件（tag 上那枚是 `d0df8fd1…`，82 件）——
+  这一格复验的是"当前发布域装得上跑得通"，已发布字节那格由上面 run 37217484951 那批证据管
+原件：evidence/ci-green-5e1d0dd-20261005-085107/（三份完整日志＋两枚 job 日志＋两页读数）
+```
+
+那一目录里还留着一页 `READINGS-BEFORE-per-job-split.txt`，是我自己的一起假读数事故原件：
+把整 run 的合流日志喂给 `tools/ci-readings.py`，`--os macos` 与 `--os ubuntu` 两次调用
+吐出**逐字相同**的一页（同一个 hostname、同一个 request_id）——因为那个 `--os` 只是抬头标签，
+取数其实扫整篇取最后一条命中。这样的两页被抄进报告就是"双 OS 各自复验通过"的假证据。
+已按先红后绿补判据 `tests/test_ci_readings.py`（6 格）：合流日志不给 `--os` ⇒ `AMBIGUOUS_LOG` 退 2；
+`--os` 写了但日志里没那档 runner ⇒ `OS_NOT_IN_LOG` 退 2；按作业下载的无前缀日志照常读数（这条
+也是被真实取数撞出来的：第一版过滤把那条路堵死了，判据先红再修）；
+顺手拆掉同一工具里写死的 `q2c-v0.1.0-source.tar.gz` 字面（它在 0.1.1 上读成 MISSING，
+而 MISSING 会被抄成"那一格没做"，实际做了）。
+
+## 5. 判据与验牙（现读）
+
+
+```
+TEST_STATUS=320 格 OK／0 失败
   命令：python3 -W error::ResourceWarning -m unittest discover -s tests -t .
   SKIP 分两档（测不到不等于通过，也不等于失败）：
     · 直跑那条命令 ⇒ 7 格 SKIP ＝ 2 格真调用未授权 ＋ 5 格「现造 wheel/sdist」组
       （本解释器取不到 `python -m build`，那一组如实写明缺什么）；
     · 带构建件跑 ⇒ 3 格 SKIP（2 真调用 ＋ 1 格等清单生成，本轮清单已生成故转实跑）：
       命令 Q2C_BUILD_PYTHON=<装了 build 的解释器> python3 -W error::ResourceWarning -m unittest discover -s tests -t .
-TEETH=45 枚变异全部把对应格打红 ⇒ verdict=TEETH-OK、no_teeth=[]、还原后整包复跑 rc=0
+TEETH=50 枚变异全部把对应格打红 ⇒ verdict=TEETH-OK、no_teeth=[]、还原后整包复跑 rc=0
   命令：python3 tools/teeth.py
-  原件：evidence/teeth-v011-20261005-001925/teeth-v011b.json
-  同批留档：那一次 **TEETH-PROBLEM 之前**的中止跑（baseline 不绿 ⇒ rc=3，没往下打变异）——
+  原件：evidence/teeth-v011-20261005-085107/（BEFORE 那一跑的原始 JSON 也在里面）
+  这两枚"无牙"是本轮最值钱的一条读数，因为**两枚都是我的判据写松了**，不是产品缺陷：
+    · vendor-block-missing-from-release-report ⇒ 旧断言是 `assertIn(key, 整篇报告)`：
+      报告 §7 讲 PyPI 回读时我又把那两枚键名提了一遍，所以把 §2 那一块删掉它仍然绿；
+      改成"四行键名要在同一个围栏块里各自成行"，取值逐行核（提交 2db4c55）；
+    · publish-gate-wrong-endpoint ⇒ 旧断言是 `assertIn("actions/runs", 整篇 publish.yml)`：
+      注释里就写着这句话，所以把执行行换成 check-suites 它仍然绿；
+      改成先取出会被执行的那几行 `gh api`，再在那几行上核端点（同一笔提交）。
+    同族在册教训：认得到字面 ≠ 认得到真会被执行的那一行。
+  更早一次 **TEETH-PROBLEM 之前**的中止跑也留着（baseline 不绿 ⇒ rc=3，没往下打变异）——
     它抓出的正是"两处 git archive 的报告排除还钉着上一版文件名"，
     原件 evidence/teeth-v011-20261005-001925/teeth-44-aborted-baseline-20261005-001925.log
-  本轮新增 12 枚：包分发 11 枚 ＋ 归档排除形状 1 枚
-分档现读（23 枚判据件；这一列由收集脚本现算并入库，不是手抄：
-  `evidence/readings-20261005-002013/per-cell.txt`，脚本只 discover 不执行）：
-  protocol 39／ack 35／stores_and_honesty 32／credentials 26／packaging 25／
+分档现读（24 枚判据件；这一列由收集脚本现算并入库，不是手抄：
+  `evidence/readings-20261005-085605/per-cell.txt`，脚本只 discover 不执行，生成器附在该文件末尾）：
+  protocol 39／ack 35／packaging 32／stores_and_honesty 32／credentials 26／
   real_handoff_evidence 17／qoder_terminal_real_fixture 13／release_manifest 13／
   expiry_cancel_adapter_failure 12／protocol_doc_sync 12／cli 11／idempotency 9／
-  trace_readings 8／process_safety 7／recovery 7／retry_delivery 7／vendor_claims 7／
-  codex_stream_real_fixture 6／shell_portability 6／synthetic_fanout 5／
-  doc_references 3／real_bidirectional 3／release_domain_local_paths 3 ⇒ TOTAL 306
+  trace_readings 8／vendor_claims 8／process_safety 7／recovery 7／retry_delivery 7／
+  ci_readings 6／codex_stream_real_fixture 6／shell_portability 6／synthetic_fanout 5／
+  doc_references 3／real_bidirectional 3／release_domain_local_paths 3 ⇒ TOTAL 320
 ```
 
 ## 6. 真实双向交接（继承 v0.1.0 那批原件，本轮未重烧）
@@ -191,6 +229,17 @@ IF_NAME_REFUSED=未发生（注册通过；此前"未被占用"的实测现在�
   这一格 0.1.1 不能再重跑（PyPI 不允许同版本覆盖），所以 0.1.1 的回读证据由本机独立核对给出，
   下一次发布会在作业里绿。
 
+发布后再取一次公开账（2026-10-05 08:4x 现读，`curl https://pypi.org/pypi/q2c/json`）：
+
+```
+PYPI_LIVE_READBACK=releases=['0.1.1']（**只有 0.1.1**——0.1.0 从没上 PyPI，也不会有）
+  info.version=0.1.1｜requires_python=>=3.9｜文件 2 枚
+  wheel sha256 890158f21954886c…a54469 ＝ GitHub Release 那枚附件 ＝ 本机这枚（逐字节同一枚）
+  sdist sha256 0f395f7b051ee4fd…8961cf ＝ 容器与 Release 那枚（c8f183c6…）不同，
+          而 84 个文件逐件 sha256 相同（两表 diff 为空：
+          evidence/pypi-0.1.1-20261005-082106/{pypi,ghrelease}-sdist-per-file-sha256.txt）
+```
+
 ## 8. 已知局限（不粉饰）
 
 1. PyPI 未上传 ⇒ `pipx install q2c` 目前是将来式；今天能照抄的是 git 那条（已现跑：v0.1.1 tag 直装到 ACKED）。
@@ -211,6 +260,8 @@ IF_NAME_REFUSED=未发生（注册通过；此前"未被占用"的实测现在�
 3) PyPI：主理人本人完成身份授权 → 上传 q2c 0.1.1 →
    从公开 PyPI 在全新环境 pipx install q2c → q2c --help → Quick Start 到 ACKED → 回读 metadata
                                                               ⇒ 已闭合（§7；2FA 与 publisher 由他本人做）
+4) 发布后那一轮：main 前进（文档／判据／取证件）后托管三道重跑全绿＋验牙补牙
+                                                              ⇒ 已闭合（§4 末屏、§5）
 ```
 
 距离 v0.1.1 发布还剩硬关口：0 个。
