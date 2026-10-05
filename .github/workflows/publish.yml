@@ -29,6 +29,7 @@ on:
 
 permissions:
   contents: read
+  actions: read          # 前置闸要读别的作业的结论；没这一格就是 403（2026-10-05 现撞到）
   id-token: write        # OIDC：PyPI 靠这一枚换短期上传凭证，仓内不存长期 token
 
 jobs:
@@ -41,35 +42,55 @@ jobs:
           ref: ${{ github.event.inputs.ref }}
           fetch-depth: 0
 
-      - name: 前置闸·该 ref 上的三道 CI 必须全绿（取不到结论就拒发）
+      - name: 前置闸·该 ref 上的三道 CI 必须全绿（读不到证据就拒发，并说清为什么读不到）
         env:
           GH_TOKEN: ${{ github.token }}
           REF: ${{ github.event.inputs.ref }}
         run: |
           set -eu
+          WORKDIR=$(mktemp -d)
           SHA=$(git rev-parse "${REF}^{commit}")
           echo "target_sha=${SHA}"
           echo "version=$(git show "${SHA}:q2c/_version.py" | sed -n 's/^__version__ = "\([^"]*\)"$/\1/p')"
-          # 需要的三道：ci / clean-machine / package（名字与各自 workflow 的 name 一致）
-          MISSING=""
-          for W in "ci" "clean-machine（独立托管环境复验冻结发布物）" "package（发布物装不装得上、CLI 入口坏没坏）"; do
-            ST=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-suites" \
-                  --jq ".check_suites[] | select(.workflow_name == \"${W}\") | .conclusion" 2>/dev/null | head -1 || true)
-            if [ -z "$ST" ]; then
-              MISSING="${MISSING} ${W}"
-            elif [ "$ST" != "success" ]; then
-              echo "PRECHECK=REFUSED（${W} 的结论是 ${ST}，不是 success）"
-              exit 1
-            else
-              echo "precheck.${W}=success"
-            fi
-          done
-          if [ -n "${MISSING}" ]; then
-            echo "PRECHECK=UNKNOWN（这些作业在该提交上没有可判结论：${MISSING}）⇒ 不发布"
-            echo "这不是失败，是**没证据**：先让那几道作业在该 ref 上真跑一次，再来触发发布。"
+          # 查的是 actions/runs（这个接口才带 .name 与 .conclusion）；
+          # 注意：commits/<sha>/check-suites 那个响应的键名列表里没有工作流名那一键，
+          # 拿它做匹配会把三道绿作业读成"没有结论"——2026-10-05 就这么拒发过一次。
+          ERR=$(mktemp)
+          RUNS_FILE=$WORKDIR/runs.json
+          # 响应先落文件再交给 python：`python3 -` 配 here-doc 时 stdin 已被脚本占了，
+          # 管道里的 JSON 读不到（本地干跑就是这么暴露的，2026-10-05）。
+          if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&per_page=100" \
+               >"$RUNS_FILE" 2>"$ERR"; then
+            echo "PRECHECK=UNREADABLE（gh api 失败：$(tr '\n' ' ' < "$ERR" | cut -c1-240)）"
+            echo "这是**取不到证据**，不是 CI 不绿；先修权限或网络，再来触发发布。"
             exit 2
           fi
-          echo "PRECHECK=PASS"
+          python3 - "$SHA" "$RUNS_FILE" <<'PY'
+          import json, sys
+          want = ["ci",
+                  "clean-machine（独立托管环境复验冻结发布物）",
+                  "package（发布物装不装得上、CLI 入口坏没坏）"]
+          data = json.load(open(sys.argv[2]))
+          runs = data.get("workflow_runs", [])
+          missing, refused = [], []
+          for name in want:
+              got = [r.get("conclusion") for r in runs if r.get("name") == name]
+              if not got:
+                  missing.append(name)
+              elif any(c != "success" for c in got):
+                  refused.append("%s=%s" % (name, ",".join(str(c) for c in got)))
+              else:
+                  print("precheck.%s=success" % name)
+          if refused:
+              print("PRECHECK=REFUSED（这些作业在该提交上不是全绿：%s）" % "; ".join(refused))
+              sys.exit(1)
+          if missing:
+              print("PRECHECK=UNKNOWN（这些作业在该提交上没有可判结论：%s）⇒ 不发布" % ", ".join(missing))
+              print("先让它们在 v0.1.1 指向的那枚提交上真跑一次，再来触发发布。")
+              sys.exit(2)
+          print("PRECHECK=PASS")
+          PY
+          echo "（前置闸的退出码就是本步骤的退出码：1＝有作业不绿，2＝取不到结论）"
 
       - uses: actions/setup-python@v5
         with:

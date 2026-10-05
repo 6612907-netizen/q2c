@@ -316,6 +316,23 @@ dynamic = ["version"]''',
      '''厂商边界见 README（这里不写）              # 故意不留那一档''',
      "tests.test_vendor_claims.Test04_发布记录里那一档也在.test_release_report_has_the_vendor_verdict_block",
      "发布记录里没写验到哪一枚 CLI⇒读发布记录的人以为整条产品线都验过了"),
+    # ---- PyPI 发布作业的前置闸（2026-10-05 那两次拒发教我的两件事）------
+    ("publish-gate-no-actions-read", ".github/workflows/publish.yml",
+     """  actions: read          # 前置闸要读别的作业的结论；没这一格就是 403（2026-10-05 现撞到）\n""",
+     """"""
+     ,
+     "tests.test_packaging.Test07_PyPI发布作业.test_precheck_has_read_permission_for_the_query",
+     "前置闸没权限读结论⇒它只能报\"取不到\"却让人以为 CI 不绿，白查一轮"),
+    ("publish-gate-wrong-endpoint", ".github/workflows/publish.yml",
+     """actions/runs?head_sha=""",
+     """commits/…/check-suites?head_sha=""",
+     "tests.test_packaging.Test07_PyPI发布作业.test_precheck_reads_a_source_that_actually_carries_names",
+     "换成不带工作流名的那个接口⇒三道绿作业被读成没有结论，发布被无故拒掉"),
+    ("publish-gate-swallows-api-error", ".github/workflows/publish.yml",
+     '''>"$RUNS_FILE" 2>"$ERR"''',
+     '''>"$RUNS_FILE" 2>/dev/null''',
+     "tests.test_packaging.Test07_PyPI发布作业.test_failure_reason_is_not_swallowed",
+     "把 API 错误咽掉＝拒发时没人知道为什么，下一轮还得从头查（在册老坑：静默的失败最难查）"),
 ]
 
 

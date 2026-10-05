@@ -669,5 +669,61 @@ class Test06_打包门(unittest.TestCase):
             self.assertIn(word, src, "核查件少了 %s 这一档" % word)
 
 
+class Test07_PyPI发布作业(unittest.TestCase):
+    """发布作业的前置闸本身也得有牙：它读不到证据时必须**说清为什么读不到**。
+
+    2026-10-05 00:55 现跑抓到的两处（都是我这边的 bug，不是 CI 不绿）：
+      1. `gh api repos/…/commits/<sha>/check-suites` 的返回里**没有 `workflow_name` 这个键**
+         （实测键名列表里就没有它），我却拿 `.workflow_name == "ci"` 做匹配 ⇒ 三道作业永远"无结论"；
+      2. workflow 顶层 `permissions` 只给了 `contents: read` ＋ `id-token: write`，
+         没给 `actions: read` ⇒ 那次 API 调用其实是被 403 拒了，而我在命令上挂了 `2>/dev/null`
+         把拒因咽掉，只留下一句"没有可判结论"。
+    闸的行为是对的（读不到就拒发、退 2、不发布），错的是它没说"为什么读不到"。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.path = os.path.join(ROOT, ".github", "workflows", "publish.yml")
+        cls.body = read(cls.path) if os.path.isfile(cls.path) else ""
+
+    def test_job_exists_and_is_manual_only(self):
+        self.assertTrue(os.path.isfile(self.path), "publish.yml 不存在⇒PyPI 这条路没人写")
+        self.assertRegex(self.body, r"(?m)^\s*workflow_dispatch:",
+                         "发布必须手动触发：自动发布＝把\"要不要发\"交给了 CI，那决定权在主理人")
+
+    def test_precheck_reads_a_source_that_actually_carries_names(self):
+        """前置闸要问**真带名字与结论的那个接口**，不是键都不存在的那个。"""
+        self.assertIn("actions/runs", self.body,
+                      "前置闸没查 actions/runs（这个接口才有 .name 与 .conclusion）")
+        self.assertNotIn("workflow_name", self.body,
+                         "又在用 check-suites 的 workflow_name 做匹配——那个键在这个响应里不存在，"
+                         "匹配永远为空，于是三道绿作业被读成\"没有结论\"")
+
+    def test_precheck_has_read_permission_for_the_query(self):
+        self.assertRegex(self.body, r"(?m)^\s*actions:\s*read\b",
+                         "没给 actions: read ⇒ 那次 API 调用是 403，闸只能报\"取不到\"而不是\"没绿\"")
+
+    def test_failure_reason_is_not_swallowed(self):
+        """拒发的理由必须落在日志里：`2>/dev/null` 把 403 咽掉＝下一轮还得从头查一遍。"""
+        block = self.body[self.body.find("前置闸"):] if "前置闸" in self.body else self.body
+        self.assertNotIn("2>/dev/null", block.split("run: |")[1] if "run: |" in block else block,
+                         "前置闸里有用 2>/dev/null 吞错误的写法⇒失败无诊断")
+
+    def test_no_long_lived_credential_is_referenced(self):
+        """全 OIDC：仓里不许出现任何 secret 引用（这是主理人\"不索取明文凭证\"那条的执行面）。"""
+        self.assertNotIn("secrets.", self.body,
+                         "发布作业引用了 secret⇒就有了长期凭证这条路，口径要改回\"不索取凭证\"")
+        self.assertRegex(self.body, r"(?m)^\s*id-token:\s*write\b",
+                         "没给 id-token: write ⇒ 换不到 OIDC 短期凭证，上传一定失败")
+
+    def test_verdict_branches_are_distinct(self):
+        for pat, why in ((r"PRECHECK=REFUSED", "有作业不绿的档"),
+                         (r"PRECHECK=UNKNOWN", "读不到结论的档（≠没绿）"),
+                         (r"PRECHECK=PASS", "放行那一档")):
+            self.assertRegex(self.body, pat, "前置闸缺 %s" % why)
+        self.assertRegex(self.body, r"exit 1", "不合格要退 1")
+        self.assertRegex(self.body, r"exit 2", "取不到要退 2，与 1 分开")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
