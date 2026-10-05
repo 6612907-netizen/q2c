@@ -150,6 +150,22 @@ CI_CLEAN_MACHINE=run 37248202724 ⇒ success
 顺手拆掉同一工具里写死的 `q2c-v0.1.0-source.tar.gz` 字面（它在 0.1.1 上读成 MISSING，
 而 MISSING 会被抄成"那一格没做"，实际做了）。
 
+最终公开尖（CHANGELOG 那一笔记完之后）：
+
+```
+公开仓 main 0b8935bd002c377ad959b4bec1d5065e0e5d085a
+ci            run 37250370059 ⇒ success（六组各 "Ran 320 tests"）
+package       run 37250370083 ⇒ success（三组合全 PKG_INSTALL_TEST=PASS）
+clean-machine run 37250370009 ⇒ success
+  macos：iad20-eo1205-…／Darwin arm64／Python 3.14.7／request_id=req-5e898963bba7427f
+  ubuntu：runnervm8df0l／Linux x86_64／Python 3.12.3／request_id=req-21ed2f7734a04e41
+  两页读数各取各的 job（这台读数器修好后的第一双页），包身份两处咬合：
+  cef501c563479e9b…q2c-v0.1.1-source.tar.gz／package_files=84（发布域新增 test_ci_readings 那一件）
+  仍然**不是**已发布那枚附件（tag 上 82 件 d0df8fd1…）；已发布字节那格由 run 37217484951 那批证据管
+中间尖 95e96e268ee5ff3edff6e25e70c056af7b46ebcd 同样三道全绿（run 37250020495／42／15）
+原件：evidence/ci-green-0b8935b-20261005-091436／evidence/ci-green-5e1d0dd-20261005-085107/
+```
+
 ## 5. 判据与验牙（现读）
 
 
@@ -161,9 +177,13 @@ TEST_STATUS=320 格 OK／0 失败
       （本解释器取不到 `python -m build`，那一组如实写明缺什么）；
     · 带构建件跑 ⇒ 3 格 SKIP（2 真调用 ＋ 1 格等清单生成，本轮清单已生成故转实跑）：
       命令 Q2C_BUILD_PYTHON=<装了 build 的解释器> python3 -W error::ResourceWarning -m unittest discover -s tests -t .
-TEETH=50 枚变异全部把对应格打红 ⇒ verdict=TEETH-OK、no_teeth=[]、还原后整包复跑 rc=0
-  命令：python3 tools/teeth.py
-  原件：evidence/teeth-v011-20261005-085107/（BEFORE 那一跑的原始 JSON 也在里面）
+TEETH=53 枚变异全部把对应格打红 ⇒ verdict=TEETH-OK、no_teeth=[]、还原后跟踪面零残留、整包基线首尾各跑一次 rc=0
+  跑在私有根 0df0438 上；命令：python3 tools/teeth.py
+  原件：evidence/teeth-v011-20261005-091109/（三批全留）＋ evidence/teeth-v011-20261005-085107/
+  这批里有一枚 **TEETH-PROBLEM 是我自己造成的**，也留着：53 枚每枚都红了、no_teeth=[]，
+  但结尾 `after_restore.tracked_dirty=[" M CHANGELOG.md"]` ⇒ 整批判 PROBLEM／rc=5。
+  我在验牙窗口里改了文件，"还原后与原件逐字相同"这句话当场不成立。
+  处置＝重跑（`teeth-53-AT-0df0438-TEETH-OK.json`），不是把判词改松，也不是"每枚都红了就当它绿"。
   这两枚"无牙"是本轮最值钱的一条读数，因为**两枚都是我的判据写松了**，不是产品缺陷：
     · vendor-block-missing-from-release-report ⇒ 旧断言是 `assertIn(key, 整篇报告)`：
       报告 §7 讲 PyPI 回读时我又把那两枚键名提了一遍，所以把 §2 那一块删掉它仍然绿；
