@@ -333,6 +333,11 @@ dynamic = ["version"]''',
      '''>"$RUNS_FILE" 2>/dev/null''',
      "tests.test_packaging.Test07_PyPI发布作业.test_failure_reason_is_not_swallowed",
      "把 API 错误咽掉＝拒发时没人知道为什么，下一轮还得从头查（在册老坑：静默的失败最难查）"),
+    ("publish-readback-uses-dead-top-level-version", ".github/workflows/publish.yml",
+     '''print("pypi_version=%s" % (info.get("version") or ""))''',
+     '''print("pypi_version=%s" % d.get("version", ""))''',
+     "tests.test_packaging.Test07_PyPI发布作业.test_readback_uses_the_field_pypi_actually_fills",
+     "回读取一个 PyPI 早就不填的顶层键⇒上传成功也被报成失败（0.1.1 那次就这么红的）"),
 ]
 
 

@@ -716,7 +716,27 @@ class Test07_PyPI发布作业(unittest.TestCase):
         self.assertRegex(self.body, r"(?m)^\s*id-token:\s*write\b",
                          "没给 id-token: write ⇒ 换不到 OIDC 短期凭证，上传一定失败")
 
-    def test_verdict_branches_are_distinct(self):
+    def test_readback_uses_the_field_pypi_actually_fills(self):
+        """回读要取 `info.version`——PyPI 的 JSON 顶层没有 version 键。
+
+        现读到（2026-10-05 那次发布）：作业里 `d.get("version")` 读出空串，
+        于是 q2c 0.1.1 **上传成功、回读却红**（`pypi_version=`＋断言失败）。
+        那一红是回读脚本的 bug，不是发布失败——但红就是红，得修：
+        版本取 `info["version"]`，并且顺手把附件的 sha256、requires_python、
+        project_urls 一起回读（这些才是"PyPI 上确实是这一个包"的证据）。
+        """
+        # 钉的是**那一行**，不是"文件里某处出现过"——后者被验牙打成 NO-TEETH 了
+        # （`info.get("version")` 在断言行里也有，把整文件搜索糊过去）。
+        line = re.search(r'^.*pypi_version=%s.*$', self.body, re.M)
+        self.assertIsNotNone(line, "回读步骤里没有 pypi_version 那一行")
+        self.assertIn('info.get("version")', line.group(0),
+                      "pypi_version 这一行还在取顶层 version 键（PyPI 不填它⇒成功也报红）")
+        self.assertNotIn('d.get("version"', line.group(0),
+                         "别留顶层键兜底：那个键不存在，留着只会让人以为它有时能用")
+        self.assertIn('f["digests"]["sha256"]', self.body,
+                      "回读没把附件哈希打出来⇒事后无法与 release 附件逐字节对号")
+
+    def test_publish_refuses_on_red_or_missing(self):
         for pat, why in ((r"PRECHECK=REFUSED", "有作业不绿的档"),
                          (r"PRECHECK=UNKNOWN", "读不到结论的档（≠没绿）"),
                          (r"PRECHECK=PASS", "放行那一档")):

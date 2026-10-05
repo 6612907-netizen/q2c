@@ -7,11 +7,11 @@
 ## 怎么装
 
 ```sh
-pipx install q2c            # PyPI 正式版本（0.1.1）——需主理人完成身份授权后才有
+pipx install q2c            # PyPI 正式版本 0.1.1（已发布）
 python3 -m pip install q2c  # 等价
 ```
 
-还没等到 PyPI 的时候，今天就能跑的等价命令（真跑过）：
+不想经 PyPI、要跟 tag 那一枚源码走的等价命令（也真跑过）：
 
 ```sh
 pipx install git+https://github.com/6612907-netizen/q2c.git@v0.1.1

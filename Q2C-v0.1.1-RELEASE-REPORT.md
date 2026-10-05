@@ -156,17 +156,40 @@ REAL_HANDOFF_STATUS=BOTH_DIRECTIONS_ACKED（原件来自 run 20261004-171323，�
 要闭合：Q2C_LIVE=1 python3 tools/real-handoff.py --workspace /tmp（需主理人点头）
 ```
 
-## 7. PyPI
+## 7. PyPI（已发布：q2c 0.1.1）
 
 ```
-PYPI_NAME=q2c UNVERIFIABLE-AS-REGISTRATION／FREE-AS-NOT-OCCUPIED
-  现跑：python3 tools/pypi-name-check.py ⇒ json_api 与 simple_index 双 404、非标准库同名、退 0
-PYPI_PUBLISH=NOT-DONE（不建账号、不要令牌、不碰公开不可逆动作）
-PYPI_CREDENTIAL_POLICY=不索取、不记录、不提交任何明文凭证；
-  发布通道按 GitHub Trusted Publisher（OIDC）设计 ⇒ 不需要长期 API token 落在这台机器上，
-  但需要主理人本人在 PyPI 上建项目并把该 GitHub 仓配成 Trusted Publisher
-IF_NAME_REFUSED=STOP，不自改包名，回报主理人裁决
+PYPI_PUBLISH=DONE   由 GitHub Actions 的 publish 作业经 OIDC 上传，run 37245938897
+  q2c-0.1.1-py3-none-any.whl ⇒ 200 OK；q2c-0.1.1.tar.gz ⇒ 200 OK
+PYPI_URL=https://pypi.org/project/q2c/0.1.1/        （本机现读 https://pypi.org/pypi/q2c/0.1.1/json ⇒ http 200）
+PYPI_OWNER=Luke66   主理人本人的 PyPI 账户；pending publisher 由他本人登记（2FA 也由他开启，全程我没碰任何凭证）
+PYPI_CREDENTIAL_POLICY=作业里不引用任何 secret、没有 API token、没有长期凭证落在这台机器或这个仓里
+PYPI_FILES=wheel   sha256 890158f21954886c…  ⇒ 与 GitHub Release 那枚附件**逐字节同一枚**
+          sdist    sha256 0f395f7b051ee4fd…  ⇒ 容器字节与 Release 附件不同（sdist 那三处当下时间，§3 已写）
+                                                 但两枚解出来 84 个文件**逐件 sha256 相同**（现算比对，
+                                                 evidence/pypi-0.1.1-20261005-082106/{pypi,ghrelease}-sdist-per-file-sha256.txt）
+PYPI_METADATA_READBACK=info.version=0.1.1｜requires_python=>=3.9｜
+          project_urls=Changelog,Homepage,Issues,Protocol,Repository,Security｜
+          包页面正文（＝README）含 QODER_CN_VERIFIED=YES 与 QODER_INTERNATIONAL_VERIFIED=NOT_VERIFIED
+          ——主理人点名要写的那条，现在在 PyPI 页面上就能看见
+FROM_PYPI_FRESH_ENV_VERIFY=PASS   命令 sh tools/pypi-install-evidence.sh
+          全新 PIPX_HOME/PIPX_BIN_DIR 装成 ⇒ q2c --help 退 0 ⇒ q2c version 报 0.1.1/q2c/1
+          ⇒ Quick Start（不在任何仓目录里）到 ACKED（request_id=req-6d8f12727c4a466b，
+            trace 九问 state_now=ACKED、when_acknowledged 有值）
+          原件 evidence/pypi-0.1.1-20261005-082106/pipx-install-and-quickstart.txt
+IF_NAME_REFUSED=未发生（注册通过；此前"未被占用"的实测现在有了下一档结论）
 ```
+
+两次触发的颜色都要记，不留好看的：
+
+- `37245466483` ⇒ **被自己的前置闸拒发**（PRECHECK=UNKNOWN，退 2，零副作用）。拒因是我这边两处 bug：
+  顶层 `permissions` 没给 `actions: read`（那次 `gh api` 其实是 403），而我又挂了 `2>/dev/null` 把拒因咽掉；
+  且匹配用的 `commits/<sha>/check-suites` 响应里**没有工作流名那个键**，三道绿作业被读成"没有结论"。
+- `37245938897` ⇒ 上传成功，但**最后一步"发布后回读"红**：它取的是 PyPI 早已不填的顶层 `version` 键，
+  于是"成功"被写成"版本不一致"。回读改用 `info.version` 并把附件 sha256／requires_python／project_urls
+  一起断言（提交 ff03221 与后续两笔；判据 Test07 第 7 格＋验牙一枚）。
+  这一格 0.1.1 不能再重跑（PyPI 不允许同版本覆盖），所以 0.1.1 的回读证据由本机独立核对给出，
+  下一次发布会在作业里绿。
 
 ## 8. 已知局限（不粉饰）
 
@@ -187,12 +210,14 @@ IF_NAME_REFUSED=STOP，不自改包名，回报主理人裁决
 2) 建 v0.1.1 tag 与 GitHub Release（附件＝被 CI 验过的那枚字节）    ⇒ 已闭合（§4 末尾那屏）
 3) PyPI：主理人本人完成身份授权 → 上传 q2c 0.1.1 →
    从公开 PyPI 在全新环境 pipx install q2c → q2c --help → Quick Start 到 ACKED → 回读 metadata
-                                                                       ⇒ 未闭合，等第 3 条
+                                                              ⇒ 已闭合（§7；2FA 与 publisher 由他本人做）
 ```
 
-距离 v0.1.1 发布还剩硬关口：1 个（就是上面第 3 条，且它只能由主理人本人开第一道门）。
+距离 v0.1.1 发布还剩硬关口：0 个。
+（另有一格仍按未证处理：真实双向交接的原件是 v0.1.0 那一批，0.1.1 这枚字节没再烧过一次真模型调用；
+ 要闭合需主理人点头，见 §6 与 KNOWN_LIMITATIONS 第 6 条。）
 
-## 10. PyPI 那一步要怎么走（我不代做、不索取凭证）
+## 10. PyPI 那一步的走法（本轮已按此走完；留作下一次发布的流程记录，我不代做身份动作）
 
 发布通道选 GitHub Trusted Publisher（OIDC），原因是它**不需要任何长期 token 落在这台机器或这个仓里**：
 `publish.yml` 里 `permissions: id-token: write`、不引用任何 `secrets.*`，
@@ -222,4 +247,4 @@ PyPI 在上传那一刻用 OIDC 换一张短期凭证。
 若 PyPI 在登记或上传那一刻**拒绝 `q2c` 这个名字**（短名保留、易混淆判定等注册期规则都可能，
 这是 §PYPI_NAME 那一档写明的"证不了"部分）：**我停手，不自改包名**，回来由主理人裁决。
 
-Q2C_V0_1_1_BLOCKED
+Q2C_V0_1_1_PYPI_RELEASED

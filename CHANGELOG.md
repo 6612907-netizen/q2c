@@ -47,12 +47,18 @@ git diff --name-only v0.1.0..<v0.1.1 冻结点> -- q2c/    # 只应出现 _versi
   判据 `tests/test_release_manifest.py::TestVersionAwareNames` 钉住，另有「根级每枚非报告 md
   必须被声明收录」的反向钉。
 
-### 未闭合（不粉饰）
+### 发布
 
-- PyPI 上传**没做**：不建账号、不要令牌、不碰公开不可逆动作。所以 `pipx install q2c` 是将来式；
-  今天能照抄的是 `pipx install git+https://github.com/6612907-netizen/q2c.git@<tag>`。
-- 名字 `q2c` 现读「未被占用」（两个公开入口都 404），但**注册会不会被拒没证也证不了**。
-- 真实双向交接那两格仍需 `Q2C_LIVE=1` 显式授权才跑；本轮一枚模型调用都没烧。
+- **PyPI 正式版 `q2c 0.1.1` 已发布**：由 GitHub Actions 的 `publish` 作业经 OIDC 上传（run 37245938897），
+  项目归主理人的 PyPI 账户（2FA 与 Trusted Publisher 登记都由他本人做；全程没有 token 或明文凭证落地）。
+  验收按要求走完：公开 PyPI → 全新 `PIPX_HOME` 里 `pipx install q2c` → `q2c --help` → Quick Start 到 `ACKED`
+  → 回读 metadata（`info.version=0.1.1`、`requires_python`、六条 project URLs、附件 sha256，
+  以及两枚 sdist「解出 84 个文件逐件 sha256 相同」的内容比对）。
+- 名字 `q2c` 注册**通过**（此前只能报「两个公开入口都 404＝未被占用」）。
+
+### 未闭合（不粉饰）
+- 真实双向交接那两格仍需 `Q2C_LIVE=1` 显式授权才跑；本轮一枚模型调用都没烧 ⇒ 原件仍是 v0.1.0 那批，
+  0.1.1 这枚字节没被真模型跑过一次。
 - Qoder International 那一支**没跑过**，因此不写「支持」。
 
 ## 0.1.0 — 2026-10-04（已公开发布：tag `v0.1.0`，见 Q2C-v0.1.0-RELEASE-REPORT.md）

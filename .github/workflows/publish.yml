@@ -140,12 +140,18 @@ jobs:
           want = sys.argv[1]
           d = json.load(open("/tmp/pypi.json"))
           info = d.get("info", {})
-          print("pypi_version=%s" % d.get("version", ""))
+          # PyPI 的 JSON 早就没有顶层 version 键了，版本在 info.version。
+          # 0.1.1 那次发布就是栽在这一行：上传成功、回读却断言"版本不一致"（顶层读到空串）。
+          print("pypi_version=%s" % (info.get("version") or ""))
           print("pypi_name=%s" % info.get("name", ""))
           print("requires_python=%s" % info.get("requires_python", ""))
           print("has_summary=%s" % bool(info.get("summary")))
           urls = info.get("project_urls") or {}
           print("project_urls=%s" % ",".join(sorted(urls)))
-          assert d.get("version") == want, "PyPI 上回读到的版本与发出去的不一致"
+          assert (info.get("version") or "") == want, "PyPI 上回读到的版本与发出去的不一致"
+          for f in d.get("urls", []):
+              print("file=%s sha256=%s" % (f["filename"], f["digests"]["sha256"]))
+          assert (info.get("requires_python") or "").startswith(">=3.9"), "requires_python 漂了"
+          assert (info.get("project_urls") or {}).get("Homepage"), "包页面没有 Homepage 链接"
           print("PYPI_READBACK=OK")
           PY

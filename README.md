@@ -217,9 +217,8 @@ artifact、每一次验牙的 JSON、发布报告与两张清单——既不在�
   跟踪里如实记 `collapsed_delivery_start=true`。
 - 两个真适配器都不提供"零副作用新建会话"，需要 `sessions bind` 显式登记已有号。
 - 无 Windows 支持路径（`fcntl` 与进程组语义按 POSIX 实现）。
-- 包发到 PyPI 这一步**没做**（需要产品所有者点头）：所以 `pipx install q2c` 暂时取不到名字，
-  能从仓与从 git 装这两条已真跑（`sh tools/pkg-install-test.sh`）；免安装路径（`bin/q2c`、
-  `python3 -m q2c`）同样已验证。
+- 已发到 PyPI：`pipx install q2c` 拿到的就是 0.1.1 这一枚（发布记录见 `Q2C-v0.1.1-RELEASE-REPORT.md`）。
+  三条路都真跑过：公开 PyPI 全新环境装、`pipx install git+…@v0.1.1`、免安装（`bin/q2c`／`python3 -m q2c`）。
 
 ## 许可
 
